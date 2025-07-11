@@ -1,0 +1,9 @@
+version: "3.8"
+services:
+  claude-agent:
+    build: .
+    container_name: claude-agent
+    ports:
+      - "8001:8001"
+    environment:
+      - PYTHONUNBUFFERED=1
