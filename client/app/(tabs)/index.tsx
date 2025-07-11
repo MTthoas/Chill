@@ -3,7 +3,6 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
-  Linking,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -40,22 +39,6 @@ interface ApiResponse {
   total_value_usd?: number;
 }
 
-interface AgentHealth {
-  status: string;
-  agent: string;
-  address: string;
-  timestamp: string;
-}
-
-interface AgentStatus {
-  name: string;
-  address: string;
-  port: number;
-  health: AgentHealth | null;
-  isLoading: boolean;
-  error: string | null;
-}
-
 function formatLargeNumber(num: number): string {
   if (num >= 1_000_000)
     return (num / 1_000_000).toFixed(1).replace(/\.0$/, "") + "M";
@@ -66,6 +49,10 @@ function formatLargeNumber(num: number): string {
 // Fonction pour obtenir le nom de la chaîne
 const getChainName = (chainId: number): string => {
   switch (chainId) {
+    case 88888:
+      return "Chiliz Mainnet";
+    case 88882:
+      return "Chiliz Testnet";
     case 11155111:
       return "Sepolia Testnet";
     case 84532:
@@ -78,9 +65,13 @@ const getChainName = (chainId: number): string => {
       return `Chain ${chainId}`;
   }
 };
+
 const getChainEndpoint = (chainId: number): string | null => {
   console.log("Actual getChainEndpoint call with chainId:", chainId);
   switch (chainId) {
+    case 88888: // Chiliz Mainnet
+    case 88882: // Chiliz Testnet
+      return "chiliz";
     case 11155111: // Sepolia
       return "ethereum";
     case 8453: // Base Sepolia
@@ -94,26 +85,14 @@ const getChainEndpoint = (chainId: number): string | null => {
   }
 };
 
-// Agent addresses and configuration
-const AGENTS_CONFIG = [
-  {
-    name: "Intellect Agent",
-    address:
-      "agent1qf82uz69zk3dlw6k3y5aewlfaavcxed29a8w9rmxqsf20tgnwtx9xxdrf24",
-    port: 8001,
-  },
-  {
-    name: "Simon Agent",
-    address:
-      "agent1qvd8tt75720p60aggzlna7rep89rmadhrt67cllz486w4y6www06vquhcca",
-    port: 8003,
-  },
-  {
-    name: "News Agent",
-    address:
-      "agent1qw7xczpxattre89f398ljwfy2cpw7hpvy607l3zn8afdtdmxsufaww898sm",
-    port: 8002,
-  },
+// Configuration des équipes fan tokens
+const FAN_TEAMS = [
+  { name: "PSG", symbol: "PSG", color: "#004170", emoji: "⚽" },
+  { name: "Real Madrid", symbol: "RMA", color: "#FEBE10", emoji: "👑" },
+  { name: "Barcelona", symbol: "BAR", color: "#A50044", emoji: "🔵" },
+  { name: "Manchester City", symbol: "CITY", color: "#6CABDD", emoji: "💙" },
+  { name: "Juventus", symbol: "JUV", color: "#000000", emoji: "⚪" },
+  { name: "Bayern Munich", symbol: "BAY", color: "#DC052D", emoji: "🔴" },
 ];
 
 // Service pour récupérer les tokens
@@ -137,25 +116,9 @@ const fetchUserTokens = async (
     }
 
     const data: ApiResponse = await response.json();
-    //console.log(`API Response:`, data);
     return data;
   } catch (error) {
     console.error("Error fetching tokens:", error);
-    return null;
-  }
-};
-
-// Service pour récupérer la santé des agents
-const fetchAgentHealth = async (port: number): Promise<AgentHealth | null> => {
-  try {
-    const response = await fetch(`${config.LOCAL_IP_ADDRESS}:${port}/health`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    const health: AgentHealth = await response.json();
-    return health;
-  } catch (error) {
-    console.error(`Error fetching agent health on port ${port}:`, error);
     return null;
   }
 };
@@ -170,14 +133,6 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hideSmallBalances, setHideSmallBalances] = useState(false);
-  const [agentsStatus, setAgentsStatus] = useState<AgentStatus[]>(
-    AGENTS_CONFIG.map((agent) => ({
-      ...agent,
-      health: null,
-      isLoading: false,
-      error: null,
-    }))
-  );
 
   // Fonction pour charger les données
   const loadTokenData = useCallback(async () => {
@@ -190,7 +145,6 @@ export default function HomeScreen() {
 
     if (data && data.success) {
       setTokens(data.tokens);
-      // Use the real total_value_usd from the API instead of manual calculation
       setTotalValue(data.total_value_usd || 0);
       setError(null);
     } else {
@@ -202,44 +156,6 @@ export default function HomeScreen() {
     setLoading(false);
   }, [address, isConnected, chainId]);
 
-  // Fonction pour charger le statut des agents
-  const loadAgentsStatus = useCallback(async () => {
-    console.log("Loading agents status...");
-
-    // Set loading state for all agents
-    setAgentsStatus((prev) =>
-      prev.map((agent) => ({
-        ...agent,
-        isLoading: true,
-        error: null,
-      }))
-    );
-
-    // Fetch health for each agent
-    const updatedStatuses = await Promise.all(
-      AGENTS_CONFIG.map(async (agentConfig) => {
-        try {
-          const health = await fetchAgentHealth(agentConfig.port);
-          return {
-            ...agentConfig,
-            health,
-            isLoading: false,
-            error: health ? null : "Agent not responding",
-          };
-        } catch (error) {
-          return {
-            ...agentConfig,
-            health: null,
-            isLoading: false,
-            error: error instanceof Error ? error.message : "Unknown error",
-          };
-        }
-      })
-    );
-
-    setAgentsStatus(updatedStatuses);
-  }, []);
-
   // Charger les données au montage et changement de chaîne
   useEffect(() => {
     if (isConnected && address) {
@@ -247,17 +163,12 @@ export default function HomeScreen() {
     }
   }, [isConnected, address, chainId, loadTokenData]);
 
-  // Charger le statut des agents au montage
-  useEffect(() => {
-    loadAgentsStatus();
-  }, [loadAgentsStatus]);
-
   // Fonction de refresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([loadTokenData(), loadAgentsStatus()]);
+    await loadTokenData();
     setRefreshing(false);
-  }, [loadTokenData, loadAgentsStatus]);
+  }, [loadTokenData]);
 
   if (!isConnected) {
     return (
@@ -269,13 +180,13 @@ export default function HomeScreen() {
           >
             <ThemedView style={styles.headerSection}>
               <ThemedView style={styles.logoContainer}>
-                <ThemedText style={styles.logoText}>⚡</ThemedText>
+                <ThemedText style={styles.logoText}>⚽</ThemedText>
               </ThemedView>
 
-              <ThemedText style={styles.title}>IntentFi</ThemedText>
+              <ThemedText style={styles.title}>Takumi</ThemedText>
 
               <ThemedText style={styles.tagline}>
-                Smart Autonomous Scheduling for Financial Intents
+                Trade Football Fan Tokens on Chiliz Blockchain
               </ThemedText>
             </ThemedView>
 
@@ -286,49 +197,49 @@ export default function HomeScreen() {
               >
                 <ThemedView style={styles.buttonContainer}>
                   <ThemedText style={styles.connectButtonText}>
-                    Connect Wallet & Start
+                    Connect Wallet & Start Trading
                   </ThemedText>
                 </ThemedView>
               </TouchableOpacity>
 
               <ThemedText style={styles.supportText}>
-                Supported on Ethereum, Polygon, Arbitrum, Sepolia, Base & Flow
+                Powered by Chiliz Blockchain - Trade PSG, Real Madrid, Barcelona & more
               </ThemedText>
             </ThemedView>
 
             <ThemedView style={styles.descriptionSection}>
               <ThemedText style={styles.description}>
-                We are building IntentFi, a revolutionary platform that
-                automates and optimizes your financial operations through
-                intelligent intent scheduling.
+                Takumi is your gateway to football fan token trading. Buy, sell, and 
+                trade official fan tokens from the world&apos;s biggest football clubs 
+                on the Chiliz blockchain.
               </ThemedText>
 
               <ThemedView style={styles.featuresGrid}>
                 <ThemedView style={styles.featureCard}>
-                  <ThemedText style={styles.featureIcon}>🤖</ThemedText>
+                  <ThemedText style={styles.featureIcon}>⚽</ThemedText>
                   <ThemedText style={styles.featureTitle}>
-                    Autonomous
+                    Fan Tokens
                   </ThemedText>
                   <ThemedText style={styles.featureDesc}>
-                    AI-powered decision making
+                    Official club tokens
                   </ThemedText>
                 </ThemedView>
 
                 <ThemedView style={styles.featureCard}>
-                  <ThemedText style={styles.featureIcon}>⚡</ThemedText>
-                  <ThemedText style={styles.featureTitle}>Smart</ThemedText>
+                  <ThemedText style={styles.featureIcon}>📈</ThemedText>
+                  <ThemedText style={styles.featureTitle}>Live Trading</ThemedText>
                   <ThemedText style={styles.featureDesc}>
-                    Optimized execution
+                    Real-time prices
                   </ThemedText>
                 </ThemedView>
 
                 <ThemedView style={styles.featureCard}>
-                  <ThemedText style={styles.featureIcon}>🎯</ThemedText>
+                  <ThemedText style={styles.featureIcon}>�</ThemedText>
                   <ThemedText style={styles.featureTitle}>
-                    Intent-Based
+                    Top Clubs
                   </ThemedText>
                   <ThemedText style={styles.featureDesc}>
-                    Focus on outcomes
+                    PSG, Madrid, Barca
                   </ThemedText>
                 </ThemedView>
 
@@ -336,8 +247,23 @@ export default function HomeScreen() {
                   <ThemedText style={styles.featureIcon}>🔒</ThemedText>
                   <ThemedText style={styles.featureTitle}>Secure</ThemedText>
                   <ThemedText style={styles.featureDesc}>
-                    Enterprise-grade security
+                    Chiliz blockchain
                   </ThemedText>
+                </ThemedView>
+              </ThemedView>
+
+              <ThemedView style={styles.teamsSection}>
+                <ThemedText style={styles.sectionTitle}>
+                  Available Fan Tokens
+                </ThemedText>
+                <ThemedView style={styles.teamsGrid}>
+                  {FAN_TEAMS.map((team, index) => (
+                    <ThemedView key={index} style={[styles.teamCard, { borderColor: team.color }]}>
+                      <ThemedText style={styles.teamEmoji}>{team.emoji}</ThemedText>
+                      <ThemedText style={styles.teamSymbol}>{team.symbol}</ThemedText>
+                      <ThemedText style={styles.teamName}>{team.name}</ThemedText>
+                    </ThemedView>
+                  ))}
                 </ThemedView>
               </ThemedView>
             </ThemedView>
@@ -360,7 +286,7 @@ export default function HomeScreen() {
         >
           <ThemedView style={styles.dashboardHeader}>
             <ThemedText style={styles.welcomeTitle}>
-              Welcome to IntentFi 🎯
+              Welcome to Takumi ⚽
             </ThemedText>
 
             <ThemedView style={styles.walletSection}>
@@ -376,7 +302,7 @@ export default function HomeScreen() {
 
           <ThemedView style={styles.statsSection}>
             <ThemedText style={styles.sectionTitle}>
-              Dashboard Overview
+              Fan Token Portfolio
             </ThemedText>
 
             <ThemedView style={styles.statsGrid}>
@@ -386,123 +312,45 @@ export default function HomeScreen() {
                   ${formatLargeNumber(Number(totalValue.toFixed(2)))}
                 </ThemedText>
                 <ThemedText style={styles.statLabel}>
-                  Total Portfolio
+                  Portfolio Value
                 </ThemedText>
               </ThemedView>
 
               <ThemedView style={styles.statCard}>
-                <ThemedText style={styles.statIcon}>🎯</ThemedText>
+                <ThemedText style={styles.statIcon}>⚽</ThemedText>
                 <ThemedText style={styles.statValue}>
                   {tokens.length}
                 </ThemedText>
-                <ThemedText style={styles.statLabel}>Active Tokens</ThemedText>
+                <ThemedText style={styles.statLabel}>Fan Tokens</ThemedText>
               </ThemedView>
 
               <ThemedView style={styles.statCard}>
-                <ThemedText style={styles.statIcon}>⚡</ThemedText>
-                <ThemedText style={styles.statValue}>7</ThemedText>
-                <ThemedText style={styles.statLabel}>Executed Today</ThemedText>
+                <ThemedText style={styles.statIcon}>🏆</ThemedText>
+                <ThemedText style={styles.statValue}>6</ThemedText>
+                <ThemedText style={styles.statLabel}>Available Clubs</ThemedText>
               </ThemedView>
 
               <ThemedView style={styles.statCard}>
                 <ThemedText style={styles.statIcon}>📈</ThemedText>
-                <ThemedText style={styles.statValue}>94%</ThemedText>
-                <ThemedText style={styles.statLabel}>Success Rate</ThemedText>
+                <ThemedText style={styles.statValue}>Chiliz</ThemedText>
+                <ThemedText style={styles.statLabel}>Blockchain</ThemedText>
               </ThemedView>
             </ThemedView>
           </ThemedView>
 
-          <ThemedView style={styles.agentsSection}>
+          <ThemedView style={styles.teamsSection}>
             <ThemedText style={styles.sectionTitle}>
-              AI Agents Status
+              Featured Teams
             </ThemedText>
 
-            <ThemedView style={styles.agentsGrid}>
-              {/* Existing Agent Cards */}
-              {agentsStatus.map((agent, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={styles.agentCard}
-                  onPress={() => {
-                    // Open agent profile URL in browser
-                    const agentUrl = `https://agentverse.ai/agents/details/${agent.address}/profile`;
-                    Linking.openURL(agentUrl).catch((err) =>
-                      console.error("Failed to open URL:", err)
-                    );
-                  }}
-                >
-                  <ThemedView style={styles.agentHeader}>
-                    <ThemedText style={styles.agentName}>
-                      {agent.name}
-                    </ThemedText>
-                    <ThemedView
-                      style={[
-                        styles.statusIndicator,
-                        {
-                          backgroundColor:
-                            agent.health?.status === "healthy"
-                              ? "#4ade80"
-                              : "#ef4444",
-                        },
-                      ]}
-                    />
-                  </ThemedView>
-
-                  <ThemedText style={styles.agentStatus}>
-                    {agent.isLoading
-                      ? "Checking..."
-                      : agent.health
-                      ? agent.health.status
-                      : "Offline"}
-                  </ThemedText>
-
-                  <ThemedText style={styles.agentPort}>
-                    Port: {agent.port}
-                  </ThemedText>
-
-                  {agent.health && (
-                    <ThemedText style={styles.agentTimestamp}>
-                      {new Date(agent.health.timestamp).toLocaleTimeString()}
-                    </ThemedText>
-                  )}
-
-                  {agent.error && (
-                    <ThemedText style={styles.agentError}>
-                      {agent.error}
-                    </ThemedText>
-                  )}
-                </TouchableOpacity>
-              ))}
-
-              {/* Chat Agent Card - Full Width */}
-              <TouchableOpacity
-                style={styles.chatAgentCard}
-                onPress={() => {
-                  const chatUrl =
-                    "https://agentverse.ai/agents/details/agent1qwlxt7alynn08f63r9qca9ahxee26k46w88wrr3q8v08znwmd5yq6ute7e9/profile";
-                  Linking.openURL(chatUrl).catch((err) =>
-                    console.error("Failed to open chat URL:", err)
-                  );
-                }}
-              >
-                <ThemedView style={styles.chatAgentHeader}>
-                  <ThemedText style={styles.chatAgentTitle}>
-                    💬 Chat Agent
-                  </ThemedText>
-                  <ThemedView
-                    style={[
-                      styles.statusIndicator,
-                      { backgroundColor: "#4ade80" },
-                    ]}
-                  />
+            <ThemedView style={styles.teamsGrid}>
+              {FAN_TEAMS.slice(0, 6).map((team, index) => (
+                <ThemedView key={index} style={[styles.teamCard, { borderColor: team.color }]}>
+                  <ThemedText style={styles.teamEmoji}>{team.emoji}</ThemedText>
+                  <ThemedText style={styles.teamSymbol}>{team.symbol}</ThemedText>
+                  <ThemedText style={styles.teamName}>{team.name}</ThemedText>
                 </ThemedView>
-                <ThemedText style={styles.chatAgentDescription}>
-                  Chat with our intelligent IntentFi Agent
-                </ThemedText>
-                <ThemedText style={styles.chatAgentLink}>
-                  🔗 Open a chat →
-                </ThemedText>
-              </TouchableOpacity>
+              ))}
             </ThemedView>
           </ThemedView>
 
@@ -549,7 +397,6 @@ export default function HomeScreen() {
                     return tokenValue >= 0.01;
                   })
                   .map((token, index) => {
-                    // Use real USD values from API instead of estimation
                     const tokenPrice = token.price_usd || 0;
                     const tokenValue = token.value_usd || 0;
 
@@ -615,7 +462,7 @@ const styles = StyleSheet.create({
   scrollContainer: {
     flexGrow: 1,
     paddingHorizontal: 20,
-    paddingTop: 100, // Encore plus d'espace pour éviter la troncature
+    paddingTop: 120,
     paddingBottom: 40,
     backgroundColor: "rgba(0, 0, 0, 0)",
   },
@@ -625,27 +472,27 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0)",
   },
   logoContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     backgroundColor: "rgba(0, 0, 0, 0)",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 24,
   },
   logoText: {
-    paddingVertical: 30, // Ajout de padding pour éviter la troncature
     fontSize: 40,
     color: "#fff",
+    textAlign: "center",
+    lineHeight: 50,
   },
   title: {
-    fontSize: 42, // Réduit légèrement
+    fontSize: 42,
     fontWeight: "bold",
     color: "#fff",
     textAlign: "center",
-    marginBottom: 2,
+    marginBottom: 12,
     letterSpacing: -1,
-    paddingVertical: 20, // Ajout de padding pour éviter la troncature
   },
   tagline: {
     fontSize: 18,
@@ -686,12 +533,12 @@ const styles = StyleSheet.create({
   featureIcon: {
     fontSize: 32,
     marginBottom: 12,
-    padding: 10,
+    textAlign: "center",
+    lineHeight: 40,
   },
   featureTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    paddingTop: 4,
     color: "#fff",
     marginBottom: 8,
     textAlign: "center",
@@ -745,7 +592,7 @@ const styles = StyleSheet.create({
   dashboardContent: {
     flexGrow: 1,
     paddingHorizontal: 20,
-    paddingTop: 100, // Plus d'espace pour éviter le texte tronqué
+    paddingTop: 120,
     paddingBottom: 40,
     backgroundColor: "rgba(0, 0, 0, 0)",
   },
@@ -755,12 +602,12 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   welcomeTitle: {
-    fontSize: 24, // Réduit pour éviter la troncature
+    fontSize: 28,
     fontWeight: "bold",
     color: "#fff",
     textAlign: "center",
     marginBottom: 24,
-    paddingHorizontal: 10,
+    lineHeight: 36,
   },
   walletSection: {
     marginBottom: 20,
@@ -792,19 +639,17 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0, 0, 0, 0)",
   },
   sectionTitle: {
-    fontSize: 22, // Réduit pour éviter la troncature
+    fontSize: 24,
     fontWeight: "bold",
     color: "#fff",
     marginBottom: 20,
     textAlign: "center",
-    paddingHorizontal: 10,
   },
   sectionTitleTokens: {
-    fontSize: 22, // Réduit pour éviter la troncature
+    fontSize: 24,
     fontWeight: "bold",
     color: "#fff",
     textAlign: "center",
-    paddingHorizontal: 10,
   },
   statsGrid: {
     flexDirection: "row",
@@ -816,23 +661,27 @@ const styles = StyleSheet.create({
   statCard: {
     width: (width - 56) / 2,
     borderRadius: 20,
-    padding: 20, // Réduit pour plus d'espace
+    padding: 24,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.1)",
+    minHeight: 120,
   },
   statIcon: {
-    fontSize: 28, // Réduit
-    marginBottom: 8,
+    fontSize: 32,
+    marginBottom: 12,
+    textAlign: "center",
+    lineHeight: 40,
   },
   statValue: {
-    fontSize: 24, // Réduit
+    fontSize: 20,
     fontWeight: "bold",
     color: "#fff",
-    marginBottom: 6,
+    marginBottom: 8,
+    textAlign: "center",
   },
   statLabel: {
-    fontSize: 12, // Réduit
+    fontSize: 14,
     color: "rgba(255, 255, 255, 0.7)",
     textAlign: "center",
   },
@@ -1056,5 +905,54 @@ const styles = StyleSheet.create({
     color: "#ef4444",
     textAlign: "center",
     marginBottom: 20,
+  },
+
+  // Teams Section Styles
+  teamsSection: {
+    marginTop: 30,
+    marginBottom: 40,
+    backgroundColor: "rgba(0, 0, 0, 0)",
+  },
+  teamsSectionTitle: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: "#fff",
+    marginBottom: 20,
+    textAlign: "center",
+    paddingHorizontal: 10,
+  },
+  teamsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 12,
+    backgroundColor: "rgba(0, 0, 0, 0)",
+  },
+  teamCard: {
+    width: (width - 56) / 3 - 4, // 3 équipes par ligne
+    borderRadius: 16,
+    padding: 16,
+    alignItems: "center",
+    borderWidth: 2,
+    backgroundColor: "rgba(255, 255, 255, 0.03)",
+  },
+  teamEmoji: {
+    fontSize: 24,
+    marginBottom: 8,
+    textAlign: "center",
+    lineHeight: 32,
+  },
+  teamSymbol: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#fff",
+    marginBottom: 4,
+    textAlign: "center",
+  },
+  teamName: {
+    fontSize: 10,
+    color: "rgba(255, 255, 255, 0.7)",
+    textAlign: "center",
+    lineHeight: 12,
   },
 });

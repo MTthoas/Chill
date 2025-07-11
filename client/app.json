@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "MyAppKitApp",
-    "slug": "MyAppKitApp",
+    "name": "Takumi",
+    "slug": "takumi-fan-tokens",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myappkitapp",
+    "scheme": "takumi",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
