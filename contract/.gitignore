@@ -1,0 +1,40 @@
+# Foundry
+cache/
+out/
+broadcast/
+
+# Dependencies
+lib/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment variables
+.env
+.env.local
+
+# Coverage reports
+coverage/
+lcov.info
+
+# Gas reports
+gasreport.txt
+
+# Node modules (if using npm/yarn)
+node_modules/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Backup files
+*.backup
+*~
