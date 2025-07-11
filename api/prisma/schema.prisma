@@ -1,0 +1,61 @@
+// Schéma Prisma pour la structure demandée
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Season {
+  id             Int          @id @default(autoincrement())
+  special_id     String       @unique // correspond à l'id externe, ex: sr:season:126393
+  name           String
+  start_date     DateTime
+  end_date       DateTime
+  year           String
+  competition_id String
+  competitors    Competitor[]
+}
+
+model Competitor {
+  id           Int          @id @default(autoincrement())
+  special_id   String       @unique // correspond à l'id externe, ex: sr:competitor:1644
+  name         String
+  short_name   String
+  abbreviation String
+  gender       String
+  country      String?
+  country_code String?
+  season       Season       @relation(fields: [seasonId], references: [id])
+  seasonId     Int
+  players      Player[]
+  statistics   Statistique[]
+}
+
+model Player {
+  id           Int         @id @default(autoincrement())
+  special_id   String      @unique // correspond à l'id externe, ex: sr:player:155995
+  name         String
+  competitor   Competitor  @relation(fields: [competitorId], references: [id])
+  competitorId Int
+  statistics   PlayerStatistique[]
+}
+
+model Statistique {
+  id           Int         @id @default(autoincrement())
+  type         String
+  value        Float
+  competitor   Competitor  @relation(fields: [competitorId], references: [id])
+  competitorId Int
+}
+
+model PlayerStatistique {
+  id           Int         @id @default(autoincrement())
+  type         String
+  value        Float
+  player       Player      @relation(fields: [playerId], references: [id])
+  playerId     Int
+}
