@@ -128,7 +128,7 @@ app.post("/seasons", async (req, res) => {
 // CRUD Competitor
 app.get("/competitors", async (req, res) => {
   const competitors = await prisma.competitor.findMany({
-    include: { players: true, statistics: true, season: true },
+    include: { statistics: true, season: true },
   });
   res.json(competitors);
 });
@@ -491,11 +491,9 @@ app.post("/player-statistics", async (req, res) => {
     if (error instanceof Error && error.message.includes("Season not found")) {
       res.status(404).json({ error: error.message });
     } else {
-      res
-        .status(500)
-        .json({
-          error: "Failed to fetch player statistics from SportRadar API",
-        });
+      res.status(500).json({
+        error: "Failed to fetch player statistics from SportRadar API",
+      });
     }
   }
 });

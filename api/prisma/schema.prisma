@@ -33,6 +33,7 @@ model Competitor {
   seasonId     Int
   players      Player[]
   statistics   Statistique[]
+  competitorStatsAdvices CompetitorStatsAdvice[]
 }
 
 model Player {
@@ -42,6 +43,7 @@ model Player {
   competitor   Competitor  @relation(fields: [competitorId], references: [id])
   competitorId Int
   statistics   PlayerStatistique[]
+  playerStatsAIAdvices PlayerStatsAIAdvice[]
 }
 
 model Statistique {
@@ -58,4 +60,20 @@ model PlayerStatistique {
   value        Float
   player       Player      @relation(fields: [playerId], references: [id])
   playerId     Int
+}
+
+model PlayerStatsAIAdvice {
+  id         Int      @id @default(autoincrement())
+  player     Player   @relation(fields: [playerId], references: [id])
+  playerId   Int
+  advice     String
+  created_at DateTime @default(now())
+}
+
+model CompetitorStatsAdvice {
+  id           Int         @id @default(autoincrement())
+  competitor   Competitor  @relation(fields: [competitorId], references: [id])
+  competitorId Int
+  advice       String
+  created_at   DateTime    @default(now())
 }
