@@ -70,6 +70,19 @@ export default function TabLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="trading_new"
+        options={{
+          title: "Fan Tokens",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol
+              size={28}
+              name="trophy.fill"
+              color={color}
+            />
+          ),
+        }}
+      />
     </Tabs>
   );
 }
