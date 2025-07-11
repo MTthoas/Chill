@@ -54,10 +54,61 @@ app.get("/seasons/:seasonId/info", async (req, res) => {
 
 // CRUD Season
 app.get("/seasons", async (req, res) => {
-  const seasons = await prisma.season.findMany({
-    include: { competitors: true },
-  });
-  res.json(seasons);
+  try {
+    const {
+      id,
+      special_id,
+      name,
+      year,
+      competition_id,
+      include_competitors,
+      include_players,
+      include_statistics,
+      limit,
+      offset,
+    } = req.query;
+
+    // Build the where clause dynamically
+    const where: any = {};
+    if (id) where.id = parseInt(id as string);
+    if (special_id) where.special_id = special_id as string;
+    if (name) where.name = { contains: name as string, mode: "insensitive" };
+    if (year) where.year = year as string;
+    if (competition_id) where.competition_id = competition_id as string;
+
+    // Build the include clause dynamically
+    const include: any = {};
+    if (include_competitors === "true") {
+      include.competitors = {
+        include: {
+          ...(include_players === "true" && { players: true }),
+          ...(include_statistics === "true" && { statistics: true }),
+        },
+      };
+    }
+
+    // Build pagination
+    const pagination: any = {};
+    if (limit) pagination.take = parseInt(limit as string);
+    if (offset) pagination.skip = parseInt(offset as string);
+
+    const seasons = await prisma.season.findMany({
+      where,
+      include,
+      ...pagination,
+      orderBy: { id: "desc" },
+    });
+
+    res.json({
+      data: seasons,
+      count: seasons.length,
+      filters: { id, special_id, name, year, competition_id },
+      includes: { include_competitors, include_players, include_statistics },
+    });
+  } catch (error) {
+    console.error("Error fetching seasons:", error);
+    res.status(500).json({ error: "Failed to fetch seasons" });
+  }
 });
 
 app.post("/seasons", async (req, res) => {
@@ -127,10 +178,96 @@ app.post("/seasons", async (req, res) => {
 
 // CRUD Competitor
 app.get("/competitors", async (req, res) => {
-  const competitors = await prisma.competitor.findMany({
-    include: { players: true, statistics: true, season: true },
-  });
-  res.json(competitors);
+  try {
+    const {
+      id,
+      special_id,
+      name,
+      short_name,
+      abbreviation,
+      gender,
+      country,
+      country_code,
+      season_id,
+      season_special_id,
+      include_players,
+      include_statistics,
+      include_season,
+      limit,
+      offset,
+    } = req.query;
+
+    // Build the where clause dynamically
+    const where: any = {};
+    if (id) where.id = parseInt(id as string);
+    if (special_id) where.special_id = special_id as string;
+    if (name) where.name = { contains: name as string, mode: "insensitive" };
+    if (short_name)
+      where.short_name = {
+        contains: short_name as string,
+        mode: "insensitive",
+      };
+    if (abbreviation) where.abbreviation = abbreviation as string;
+    if (gender) where.gender = gender as string;
+    if (country)
+      where.country = { contains: country as string, mode: "insensitive" };
+    if (country_code) where.country_code = country_code as string;
+    if (season_id) where.seasonId = parseInt(season_id as string);
+    if (season_special_id) {
+      where.season = {
+        special_id: season_special_id as string,
+      };
+    }
+
+    // Build the include clause dynamically
+    const include: any = {};
+    if (include_players === "true") {
+      include.players = {
+        include: {
+          ...(include_statistics === "true" && { statistics: true }),
+        },
+      };
+    }
+    if (include_statistics === "true" && !include.players) {
+      include.statistics = true;
+    }
+    if (include_season === "true") {
+      include.season = true;
+    }
+
+    // Build pagination
+    const pagination: any = {};
+    if (limit) pagination.take = parseInt(limit as string);
+    if (offset) pagination.skip = parseInt(offset as string);
+
+    const competitors = await prisma.competitor.findMany({
+      where,
+      include,
+      ...pagination,
+      orderBy: { id: "desc" },
+    });
+
+    res.json({
+      data: competitors,
+      count: competitors.length,
+      filters: {
+        id,
+        special_id,
+        name,
+        short_name,
+        abbreviation,
+        gender,
+        country,
+        country_code,
+        season_id,
+        season_special_id,
+      },
+      includes: { include_players, include_statistics, include_season },
+    });
+  } catch (error) {
+    console.error("Error fetching competitors:", error);
+    res.status(500).json({ error: "Failed to fetch competitors" });
+  }
 });
 
 app.post("/competitors", async (req, res) => {
@@ -221,6 +358,89 @@ app.post("/competitors", async (req, res) => {
 });
 
 // CRUD Player
+app.get("/players", async (req, res) => {
+  try {
+    const {
+      id,
+      special_id,
+      name,
+      competitor_id,
+      competitor_special_id,
+      season_id,
+      season_special_id,
+      include_competitor,
+      include_statistics,
+      include_season,
+      limit,
+      offset,
+    } = req.query;
+
+    // Build the where clause dynamically
+    const where: any = {};
+    if (id) where.id = parseInt(id as string);
+    if (special_id) where.special_id = special_id as string;
+    if (name) where.name = { contains: name as string, mode: "insensitive" };
+    if (competitor_id) where.competitorId = parseInt(competitor_id as string);
+    if (competitor_special_id) {
+      where.competitor = {
+        special_id: competitor_special_id as string,
+      };
+    }
+    if (season_id || season_special_id) {
+      where.competitor = {
+        ...where.competitor,
+        ...(season_id && { seasonId: parseInt(season_id as string) }),
+        ...(season_special_id && {
+          season: { special_id: season_special_id as string },
+        }),
+      };
+    }
+
+    // Build the include clause dynamically
+    const include: any = {};
+    if (include_competitor === "true") {
+      include.competitor = {
+        include: {
+          ...(include_season === "true" && { season: true }),
+        },
+      };
+    }
+    if (include_statistics === "true") {
+      include.statistics = true;
+    }
+
+    // Build pagination
+    const pagination: any = {};
+    if (limit) pagination.take = parseInt(limit as string);
+    if (offset) pagination.skip = parseInt(offset as string);
+
+    const players = await prisma.player.findMany({
+      where,
+      include,
+      ...pagination,
+      orderBy: { id: "desc" },
+    });
+
+    res.json({
+      data: players,
+      count: players.length,
+      filters: {
+        id,
+        special_id,
+        name,
+        competitor_id,
+        competitor_special_id,
+        season_id,
+        season_special_id,
+      },
+      includes: { include_competitor, include_statistics, include_season },
+    });
+  } catch (error) {
+    console.error("Error fetching players:", error);
+    res.status(500).json({ error: "Failed to fetch players" });
+  }
+});
+
 app.post("/players", async (req, res) => {
   const { seasonId } = req.body;
 
@@ -232,7 +452,7 @@ app.post("/players", async (req, res) => {
 
     console.log("Season info validated:", seasonInfo.season);
 
-    // Wait 1 second to avoid rate limiting
+    // Wait 2 second to avoid rate limiting
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Fetch players with competitor assignments from SportRadar API
@@ -491,22 +711,187 @@ app.post("/player-statistics", async (req, res) => {
     if (error instanceof Error && error.message.includes("Season not found")) {
       res.status(404).json({ error: error.message });
     } else {
-      res
-        .status(500)
-        .json({
-          error: "Failed to fetch player statistics from SportRadar API",
-        });
+      res.status(500).json({
+        error: "Failed to fetch player statistics from SportRadar API",
+      });
     }
   }
 });
 
-// CRUD Statistique
-app.post("/statistics", async (req, res) => {
-  const { type, value, competitorId } = req.body;
-  const stat = await prisma.statistique.create({
-    data: { type, value, competitorId },
-  });
-  res.json(stat);
+// GET Competitor Statistics
+app.get("/competitor-statistics", async (req, res) => {
+  try {
+    const {
+      id,
+      type,
+      competitor_id,
+      competitor_special_id,
+      season_id,
+      season_special_id,
+      include_competitor,
+      include_season,
+      limit,
+      offset,
+    } = req.query;
+
+    // Build the where clause dynamically
+    const where: any = {};
+    if (id) where.id = parseInt(id as string);
+    if (type) where.type = { contains: type as string, mode: "insensitive" };
+    if (competitor_id) where.competitorId = parseInt(competitor_id as string);
+    if (competitor_special_id) {
+      where.competitor = {
+        special_id: competitor_special_id as string,
+      };
+    }
+    if (season_id || season_special_id) {
+      where.competitor = {
+        ...where.competitor,
+        ...(season_id && { seasonId: parseInt(season_id as string) }),
+        ...(season_special_id && {
+          season: { special_id: season_special_id as string },
+        }),
+      };
+    }
+
+    // Build the include clause dynamically
+    const include: any = {};
+    if (include_competitor === "true") {
+      include.competitor = {
+        include: {
+          ...(include_season === "true" && { season: true }),
+        },
+      };
+    }
+
+    // Build pagination
+    const pagination: any = {};
+    if (limit) pagination.take = parseInt(limit as string);
+    if (offset) pagination.skip = parseInt(offset as string);
+
+    const statistics = await prisma.statistique.findMany({
+      where,
+      include,
+      ...pagination,
+      orderBy: { id: "desc" },
+    });
+
+    res.json({
+      data: statistics,
+      count: statistics.length,
+      filters: {
+        id,
+        type,
+        competitor_id,
+        competitor_special_id,
+        season_id,
+        season_special_id,
+      },
+      includes: { include_competitor, include_season },
+    });
+  } catch (error) {
+    console.error("Error fetching competitor statistics:", error);
+    res.status(500).json({ error: "Failed to fetch competitor statistics" });
+  }
+});
+
+// GET Player Statistics
+app.get("/player-statistics", async (req, res) => {
+  try {
+    const {
+      id,
+      type,
+      player_id,
+      player_special_id,
+      competitor_id,
+      competitor_special_id,
+      season_id,
+      season_special_id,
+      include_player,
+      include_competitor,
+      include_season,
+      limit,
+      offset,
+    } = req.query;
+
+    // Build the where clause dynamically
+    const where: any = {};
+    if (id) where.id = parseInt(id as string);
+    if (type) where.type = { contains: type as string, mode: "insensitive" };
+    if (player_id) where.playerId = parseInt(player_id as string);
+    if (player_special_id) {
+      where.player = {
+        special_id: player_special_id as string,
+      };
+    }
+    if (
+      competitor_id ||
+      competitor_special_id ||
+      season_id ||
+      season_special_id
+    ) {
+      where.player = {
+        ...where.player,
+        competitor: {
+          ...(competitor_id && { id: parseInt(competitor_id as string) }),
+          ...(competitor_special_id && {
+            special_id: competitor_special_id as string,
+          }),
+          ...(season_id && { seasonId: parseInt(season_id as string) }),
+          ...(season_special_id && {
+            season: { special_id: season_special_id as string },
+          }),
+        },
+      };
+    }
+
+    // Build the include clause dynamically
+    const include: any = {};
+    if (include_player === "true") {
+      include.player = {
+        include: {
+          ...(include_competitor === "true" && {
+            competitor: {
+              include: {
+                ...(include_season === "true" && { season: true }),
+              },
+            },
+          }),
+        },
+      };
+    }
+
+    // Build pagination
+    const pagination: any = {};
+    if (limit) pagination.take = parseInt(limit as string);
+    if (offset) pagination.skip = parseInt(offset as string);
+
+    const statistics = await prisma.playerStatistique.findMany({
+      where,
+      include,
+      ...pagination,
+      orderBy: { id: "desc" },
+    });
+
+    res.json({
+      data: statistics,
+      count: statistics.length,
+      filters: {
+        id,
+        type,
+        player_id,
+        player_special_id,
+        competitor_id,
+        competitor_special_id,
+        season_id,
+        season_special_id,
+      },
+      includes: { include_player, include_competitor, include_season },
+    });
+  } catch (error) {
+    console.error("Error fetching player statistics:", error);
+    res.status(500).json({ error: "Failed to fetch player statistics" });
+  }
 });
 
 // Récupérer les statistiques d'un joueur par son special_id

@@ -1,0 +1,689 @@
+{
+  "info": {
+    "_postman_id": "chill-api-collection",
+    "name": "Chill API - SportRadar Integration",
+    "description": "Complete API collection for Chill application with SportRadar integration for seasons, competitors, players, and statistics",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Seasons",
+      "item": [
+        {
+          "name": "Get Season Info (External API)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/seasons/118689/info",
+              "host": ["{{base_url}}"],
+              "path": ["seasons", "118689", "info"]
+            }
+          }
+        },
+        {
+          "name": "Get All Seasons",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/seasons",
+              "host": ["{{base_url}}"],
+              "path": ["seasons"]
+            }
+          }
+        },
+        {
+          "name": "Get Seasons with Filters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/seasons?name=Premier&year=2024&include_competitors=true&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["seasons"],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "Premier"
+                },
+                {
+                  "key": "year",
+                  "value": "2024"
+                },
+                {
+                  "key": "include_competitors",
+                  "value": "true"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Seasons from SportRadar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/seasons",
+              "host": ["{{base_url}}"],
+              "path": ["seasons"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Competitors",
+      "item": [
+        {
+          "name": "Get All Competitors",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/competitors",
+              "host": ["{{base_url}}"],
+              "path": ["competitors"]
+            }
+          }
+        },
+        {
+          "name": "Get Competitors with Filters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/competitors?season_special_id=118689&country=England&include_players=true&include_season=true",
+              "host": ["{{base_url}}"],
+              "path": ["competitors"],
+              "query": [
+                {
+                  "key": "season_special_id",
+                  "value": "118689"
+                },
+                {
+                  "key": "country",
+                  "value": "England"
+                },
+                {
+                  "key": "include_players",
+                  "value": "true"
+                },
+                {
+                  "key": "include_season",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Competitors by Gender",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/competitors?gender=male&include_statistics=true",
+              "host": ["{{base_url}}"],
+              "path": ["competitors"],
+              "query": [
+                {
+                  "key": "gender",
+                  "value": "male"
+                },
+                {
+                  "key": "include_statistics",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Competitors from SportRadar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"seasonId\": \"118689\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/competitors",
+              "host": ["{{base_url}}"],
+              "path": ["competitors"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Players",
+      "item": [
+        {
+          "name": "Get All Players",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/players",
+              "host": ["{{base_url}}"],
+              "path": ["players"]
+            }
+          }
+        },
+        {
+          "name": "Get Players with Filters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/players?competitor_special_id=17&include_competitor=true&include_statistics=true",
+              "host": ["{{base_url}}"],
+              "path": ["players"],
+              "query": [
+                {
+                  "key": "competitor_special_id",
+                  "value": "17"
+                },
+                {
+                  "key": "include_competitor",
+                  "value": "true"
+                },
+                {
+                  "key": "include_statistics",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Players by Season",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/players?season_special_id=118689&include_competitor=true&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["players"],
+              "query": [
+                {
+                  "key": "season_special_id",
+                  "value": "118689"
+                },
+                {
+                  "key": "include_competitor",
+                  "value": "true"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Players by Name",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/players?name=Messi&include_competitor=true",
+              "host": ["{{base_url}}"],
+              "path": ["players"],
+              "query": [
+                {
+                  "key": "name",
+                  "value": "Messi"
+                },
+                {
+                  "key": "include_competitor",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Create Players from SportRadar",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"seasonId\": \"118689\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/players",
+              "host": ["{{base_url}}"],
+              "path": ["players"]
+            }
+          }
+        },
+        {
+          "name": "Get Player Statistics by Special ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/players/155995/statistics",
+              "host": ["{{base_url}}"],
+              "path": ["players", "155995", "statistics"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Statistics",
+      "item": [
+        {
+          "name": "Competitor Statistics",
+          "item": [
+            {
+              "name": "Get All Competitor Statistics",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/competitor-statistics",
+                  "host": ["{{base_url}}"],
+                  "path": ["competitor-statistics"]
+                }
+              }
+            },
+            {
+              "name": "Get Competitor Statistics with Filters",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/competitor-statistics?type=goals&season_special_id=118689&include_competitor=true",
+                  "host": ["{{base_url}}"],
+                  "path": ["competitor-statistics"],
+                  "query": [
+                    {
+                      "key": "type",
+                      "value": "goals"
+                    },
+                    {
+                      "key": "season_special_id",
+                      "value": "118689"
+                    },
+                    {
+                      "key": "include_competitor",
+                      "value": "true"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Statistics by Competitor",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/competitor-statistics?competitor_special_id=1644&include_competitor=true&include_season=true",
+                  "host": ["{{base_url}}"],
+                  "path": ["competitor-statistics"],
+                  "query": [
+                    {
+                      "key": "competitor_special_id",
+                      "value": "1644"
+                    },
+                    {
+                      "key": "include_competitor",
+                      "value": "true"
+                    },
+                    {
+                      "key": "include_season",
+                      "value": "true"
+                    }
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Player Statistics",
+          "item": [
+            {
+              "name": "Get All Player Statistics",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/player-statistics",
+                  "host": ["{{base_url}}"],
+                  "path": ["player-statistics"]
+                }
+              }
+            },
+            {
+              "name": "Get Player Statistics with Filters",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/player-statistics?type=goals&competitor_special_id=17&include_player=true",
+                  "host": ["{{base_url}}"],
+                  "path": ["player-statistics"],
+                  "query": [
+                    {
+                      "key": "type",
+                      "value": "goals"
+                    },
+                    {
+                      "key": "competitor_special_id",
+                      "value": "17"
+                    },
+                    {
+                      "key": "include_player",
+                      "value": "true"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Get Statistics by Player",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{base_url}}/player-statistics?player_special_id=155995&include_player=true&include_competitor=true",
+                  "host": ["{{base_url}}"],
+                  "path": ["player-statistics"],
+                  "query": [
+                    {
+                      "key": "player_special_id",
+                      "value": "155995"
+                    },
+                    {
+                      "key": "include_player",
+                      "value": "true"
+                    },
+                    {
+                      "key": "include_competitor",
+                      "value": "true"
+                    }
+                  ]
+                }
+              }
+            },
+            {
+              "name": "Create Player Statistics from SportRadar",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n    \"seasonId\": \"126393\",\n    \"competitorId\": \"1644\"\n}"
+                },
+                "url": {
+                  "raw": "{{base_url}}/player-statistics",
+                  "host": ["{{base_url}}"],
+                  "path": ["player-statistics"]
+                }
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Advanced Queries",
+      "item": [
+        {
+          "name": "Complete Season Data",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/seasons?special_id=118689&include_competitors=true&include_players=true&include_statistics=true",
+              "host": ["{{base_url}}"],
+              "path": ["seasons"],
+              "query": [
+                {
+                  "key": "special_id",
+                  "value": "118689"
+                },
+                {
+                  "key": "include_competitors",
+                  "value": "true"
+                },
+                {
+                  "key": "include_players",
+                  "value": "true"
+                },
+                {
+                  "key": "include_statistics",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Top Performing Players",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/player-statistics?type=goals_scored&season_special_id=118689&include_player=true&include_competitor=true&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["player-statistics"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "goals_scored"
+                },
+                {
+                  "key": "season_special_id",
+                  "value": "118689"
+                },
+                {
+                  "key": "include_player",
+                  "value": "true"
+                },
+                {
+                  "key": "include_competitor",
+                  "value": "true"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Team Performance Comparison",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/competitor-statistics?type=goals_scored&season_special_id=118689&include_competitor=true",
+              "host": ["{{base_url}}"],
+              "path": ["competitor-statistics"],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "goals_scored"
+                },
+                {
+                  "key": "season_special_id",
+                  "value": "118689"
+                },
+                {
+                  "key": "include_competitor",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Search Players by Team Name",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/players?season_special_id=118689&include_competitor=true",
+              "host": ["{{base_url}}"],
+              "path": ["players"],
+              "query": [
+                {
+                  "key": "season_special_id",
+                  "value": "118689"
+                },
+                {
+                  "key": "include_competitor",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Data Setup Workflow",
+      "item": [
+        {
+          "name": "1. Create Seasons",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/seasons",
+              "host": ["{{base_url}}"],
+              "path": ["seasons"]
+            }
+          }
+        },
+        {
+          "name": "2. Create Competitors",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"seasonId\": \"118689\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/competitors",
+              "host": ["{{base_url}}"],
+              "path": ["competitors"]
+            }
+          }
+        },
+        {
+          "name": "3. Create Players",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"seasonId\": \"118689\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/players",
+              "host": ["{{base_url}}"],
+              "path": ["players"]
+            }
+          }
+        },
+        {
+          "name": "4. Create Statistics",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"seasonId\": \"126393\",\n    \"competitorId\": \"1644\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/player-statistics",
+              "host": ["{{base_url}}"],
+              "path": ["player-statistics"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    }
+  ]
+}
