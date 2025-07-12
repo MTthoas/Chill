@@ -1,5 +1,5 @@
 import { AppKitButton, useAppKit } from "@reown/appkit-wagmi-react-native";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -11,35 +11,12 @@ import {
 } from "react-native";
 import { useAccount, useChainId } from "wagmi";
 
+import AnimatedTitle from "@/components/AnimatedTitle";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
-import { config } from "@/config/env";
-import AnimatedTitle from "@/components/AnimatedTitle";
-
+import { useOnChainTokenBalances } from "@/hooks/useOnChainTokenBalances";
 
 const { width } = Dimensions.get("window");
-
-// Types pour l'API
-interface Token {
-  contractAddress: string;
-  decimals: number;
-  name: string;
-  readableBalance: number;
-  symbol: string;
-  tokenBalance: string;
-  price_usd?: number;
-  value_usd?: number;
-}
-
-interface ApiResponse {
-  address: string;
-  chain: string;
-  native_balance: number;
-  success: boolean;
-  token_count: number;
-  tokens: Token[];
-  total_value_usd?: number;
-}
 
 function formatLargeNumber(num: number): string {
   if (num >= 1_000_000)
@@ -81,80 +58,29 @@ const FAN_TEAMS = [
   { name: "Bayern Munich", symbol: "BAY", color: "#DC052D", emoji: "🔴" },
 ];
 
-// Service pour récupérer les tokens
-const fetchUserTokens = async (
-  address: string,
-  chainId: number
-): Promise<ApiResponse | null> => {
-  try {
-    const endpoint = getChainEndpoint(chainId);
-    if (!endpoint) {
-      console.log(`Chain ${chainId} not supported`);
-      return null;
-    }
-
-    const apiUrl = `${config.API_BASE_API_URL}/tokens/${endpoint}/${address}`;
-    console.log(`Fetching tokens from: ${apiUrl}`);
-
-    const response = await fetch(apiUrl);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data: ApiResponse = await response.json();
-    return data;
-  } catch (error) {
-    console.error("Error fetching tokens:", error);
-    return null;
-  }
-};
-
 export default function HomeScreen() {
   const { open } = useAppKit();
-  const { isConnected, address } = useAccount();
+  const { isConnected } = useAccount();
   const chainId = useChainId();
-  const [tokens, setTokens] = useState<Token[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [totalValue, setTotalValue] = useState(0);
+
+  // Use on-chain token balances instead of backend API
+  const { tokens, loading, error, refetch } = useOnChainTokenBalances();
+
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [hideSmallBalances, setHideSmallBalances] = useState(false);
 
-  // Fonction pour charger les données
-  const loadTokenData = useCallback(async () => {
-    if (!address || !isConnected) return;
-
-    setLoading(true);
-    setError(null);
-
-    const data = await fetchUserTokens(address, chainId);
-
-    if (data && data.success) {
-      setTokens(data.tokens);
-      setTotalValue(data.total_value_usd || 0);
-      setError(null);
-    } else {
-      setTokens([]);
-      setTotalValue(0);
-      setError("Failed to fetch token data. Please check your connection.");
-    }
-
-    setLoading(false);
-  }, [address, isConnected, chainId]);
-
-  // Charger les données au montage et changement de chaîne
-  useEffect(() => {
-    if (isConnected && address) {
-      loadTokenData();
-    }
-  }, [isConnected, address, chainId, loadTokenData]);
+  // Calculate total value (simplified - just count tokens since we don't have USD prices on-chain)
+  const totalValue = tokens.reduce(
+    (total, token) => total + token.readableBalance,
+    0
+  );
 
   // Fonction de refresh
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadTokenData();
+    await refetch();
     setRefreshing(false);
-  }, [loadTokenData]);
+  }, [refetch]);
 
   if (!isConnected) {
     return (
@@ -169,7 +95,7 @@ export default function HomeScreen() {
                 <ThemedText style={styles.logoText}>⚽</ThemedText>
               </ThemedView>
 
-            <AnimatedTitle />
+              <AnimatedTitle />
 
               <ThemedText style={styles.tagline}>
                 Trade Football Fan Tokens on Chiliz Blockchain
@@ -189,15 +115,16 @@ export default function HomeScreen() {
               </TouchableOpacity>
 
               <ThemedText style={styles.supportText}>
-                Powered by Chiliz Blockchain - Trade PSG, Real Madrid, Barcelona & more
+                Powered by Chiliz Blockchain - Trade PSG, Real Madrid, Barcelona
+                & more
               </ThemedText>
             </ThemedView>
 
             <ThemedView style={styles.descriptionSection}>
               <ThemedText style={styles.description}>
-                Takumi is your gateway to football fan token trading. Buy, sell, and 
-                trade official fan tokens from the world&apos;s biggest football clubs 
-                on the Chiliz blockchain.
+                Takumi is your gateway to football fan token trading. Buy, sell,
+                and trade official fan tokens from the world&apos;s biggest
+                football clubs on the Chiliz blockchain.
               </ThemedText>
 
               <ThemedView style={styles.featuresGrid}>
@@ -213,7 +140,9 @@ export default function HomeScreen() {
 
                 <ThemedView style={styles.featureCard}>
                   <ThemedText style={styles.featureIcon}>📈</ThemedText>
-                  <ThemedText style={styles.featureTitle}>Live Trading</ThemedText>
+                  <ThemedText style={styles.featureTitle}>
+                    Live Trading
+                  </ThemedText>
                   <ThemedText style={styles.featureDesc}>
                     Real-time prices
                   </ThemedText>
@@ -221,9 +150,7 @@ export default function HomeScreen() {
 
                 <ThemedView style={styles.featureCard}>
                   <ThemedText style={styles.featureIcon}>�</ThemedText>
-                  <ThemedText style={styles.featureTitle}>
-                    Top Clubs
-                  </ThemedText>
+                  <ThemedText style={styles.featureTitle}>Top Clubs</ThemedText>
                   <ThemedText style={styles.featureDesc}>
                     PSG, Madrid, Barca
                   </ThemedText>
@@ -244,10 +171,19 @@ export default function HomeScreen() {
                 </ThemedText>
                 <ThemedView style={styles.teamsGrid}>
                   {FAN_TEAMS.map((team, index) => (
-                    <ThemedView key={index} style={[styles.teamCard, { borderColor: team.color }]}>
-                      <ThemedText style={styles.teamEmoji}>{team.emoji}</ThemedText>
-                      <ThemedText style={styles.teamSymbol}>{team.symbol}</ThemedText>
-                      <ThemedText style={styles.teamName}>{team.name}</ThemedText>
+                    <ThemedView
+                      key={index}
+                      style={[styles.teamCard, { borderColor: team.color }]}
+                    >
+                      <ThemedText style={styles.teamEmoji}>
+                        {team.emoji}
+                      </ThemedText>
+                      <ThemedText style={styles.teamSymbol}>
+                        {team.symbol}
+                      </ThemedText>
+                      <ThemedText style={styles.teamName}>
+                        {team.name}
+                      </ThemedText>
                     </ThemedView>
                   ))}
                 </ThemedView>
@@ -313,7 +249,9 @@ export default function HomeScreen() {
               <ThemedView style={styles.statCard}>
                 <ThemedText style={styles.statIcon}>🏆</ThemedText>
                 <ThemedText style={styles.statValue}>6</ThemedText>
-                <ThemedText style={styles.statLabel}>Available Clubs</ThemedText>
+                <ThemedText style={styles.statLabel}>
+                  Available Clubs
+                </ThemedText>
               </ThemedView>
 
               <ThemedView style={styles.statCard}>
@@ -325,15 +263,18 @@ export default function HomeScreen() {
           </ThemedView>
 
           <ThemedView style={styles.teamsSection}>
-            <ThemedText style={styles.sectionTitle}>
-              Featured Teams
-            </ThemedText>
+            <ThemedText style={styles.sectionTitle}>Featured Teams</ThemedText>
 
             <ThemedView style={styles.teamsGrid}>
               {FAN_TEAMS.slice(0, 6).map((team, index) => (
-                <ThemedView key={index} style={[styles.teamCard, { borderColor: team.color }]}>
+                <ThemedView
+                  key={index}
+                  style={[styles.teamCard, { borderColor: team.color }]}
+                >
                   <ThemedText style={styles.teamEmoji}>{team.emoji}</ThemedText>
-                  <ThemedText style={styles.teamSymbol}>{team.symbol}</ThemedText>
+                  <ThemedText style={styles.teamSymbol}>
+                    {team.symbol}
+                  </ThemedText>
                   <ThemedText style={styles.teamName}>{team.name}</ThemedText>
                 </ThemedView>
               ))}
@@ -342,7 +283,9 @@ export default function HomeScreen() {
 
           <ThemedView style={styles.tokensSection}>
             <ThemedView style={styles.tokensSectionHeader}>
-              <ThemedText style={styles.sectionTitleTokens}>Your Tokens</ThemedText>
+              <ThemedText style={styles.sectionTitleTokens}>
+                Your Tokens
+              </ThemedText>
               <TouchableOpacity
                 style={styles.filterToggle}
                 onPress={() => setHideSmallBalances(!hideSmallBalances)}
@@ -358,7 +301,7 @@ export default function HomeScreen() {
                 <ThemedText style={styles.errorText}>{error}</ThemedText>
                 <TouchableOpacity
                   style={styles.refreshButton}
-                  onPress={loadTokenData}
+                  onPress={() => refetch()}
                 >
                   <ThemedText style={styles.refreshButtonText}>
                     Retry
@@ -379,13 +322,10 @@ export default function HomeScreen() {
                 {tokens
                   .filter((token) => {
                     if (!hideSmallBalances) return true;
-                    const tokenValue = token.value_usd || 0;
-                    return tokenValue >= 0.01;
+                    // Filter based on balance instead of USD value
+                    return token.readableBalance > 0;
                   })
                   .map((token, index) => {
-                    const tokenPrice = token.price_usd || 0;
-                    const tokenValue = token.value_usd || 0;
-
                     return (
                       <ThemedView
                         key={`${token.contractAddress}-${index}`}
@@ -396,15 +336,15 @@ export default function HomeScreen() {
                             {token.symbol}
                           </ThemedText>
                           <ThemedText style={styles.tokenValue}>
-                            ${tokenValue.toFixed(2)}
+                            {token.readableBalance.toFixed(4)} {token.symbol}
                           </ThemedText>
                         </ThemedView>
                         <ThemedView style={styles.tokenDetails}>
                           <ThemedText style={styles.tokenAmount}>
-                            {token.readableBalance.toFixed(4)} {token.symbol}
+                            Balance: {token.readableBalance.toFixed(4)}
                           </ThemedText>
                           <ThemedText style={styles.tokenPrice}>
-                            ${tokenPrice.toFixed(2)}
+                            Contract: {token.contractAddress.slice(0, 8)}...
                           </ThemedText>
                         </ThemedView>
                       </ThemedView>
@@ -419,7 +359,7 @@ export default function HomeScreen() {
                 </ThemedText>
                 <TouchableOpacity
                   style={styles.refreshButton}
-                  onPress={loadTokenData}
+                  onPress={() => refetch()}
                 >
                   <ThemedText style={styles.refreshButtonText}>
                     Refresh
