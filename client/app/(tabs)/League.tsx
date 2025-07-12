@@ -6,14 +6,15 @@ import {
   StyleSheet,
   Dimensions,
   ActivityIndicator,
-  ScrollView,
+  Pressable,
 } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 
 const { width, height } = Dimensions.get("window");
 
 export default function League() {
   const { id, name, special_id } = useLocalSearchParams();
+  const router = useRouter();
   const [matches, setMatches] = useState<any[]>([]);
   const [teams, setTeams] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +45,7 @@ export default function League() {
       }
     }
     fetchData();
-  }, [id]);
+  }, [id, name, special_id]);
 
   if (loading) return <ActivityIndicator style={{ flex: 1 }} color="#6366f1" />;
   if (error) return <Text style={styles.error}>{error}</Text>;
@@ -52,7 +53,7 @@ export default function League() {
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{name}</Text>
-      <Text style={styles.subtitle}>Ligue d'homme</Text>
+      <Text style={styles.subtitle}>Ligue d&apos;homme</Text>
       <View style={styles.matchesSection}>
         <Text style={styles.sectionTitle}>Futurs matchs</Text>
         {matches.length === 0 ? (
@@ -142,7 +143,19 @@ export default function League() {
           keyExtractor={(item) => item.id?.toString() || item.name}
           contentContainerStyle={styles.teamsList}
           renderItem={({ item }) => (
-            <View style={styles.teamCardBetclic}>
+            <Pressable
+              style={styles.teamCardBetclic}
+              android_ripple={{ color: "#6366f1" }}
+              onPress={() => {
+                router.push({
+                  pathname: "./Team",
+                  params: {
+                    ...item,
+                    seasonId: id,
+                  },
+                });
+              }}
+            >
               <View style={styles.teamInfoRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.teamNameBetclic}>{item.name}</Text>
@@ -159,7 +172,7 @@ export default function League() {
               {item.country && (
                 <Text style={styles.teamCountryBetclic}>{item.country}</Text>
               )}
-            </View>
+            </Pressable>
           )}
           ListEmptyComponent={
             <Text style={styles.empty}>Aucune équipe trouvée.</Text>
