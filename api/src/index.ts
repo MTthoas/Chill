@@ -178,7 +178,6 @@ app.post("/seasons", async (req, res) => {
 
 // CRUD Competitor
 app.get("/competitors", async (req, res) => {
-<<<<<<< HEAD
   try {
     const {
       id,
@@ -269,12 +268,6 @@ app.get("/competitors", async (req, res) => {
     console.error("Error fetching competitors:", error);
     res.status(500).json({ error: "Failed to fetch competitors" });
   }
-=======
-  const competitors = await prisma.competitor.findMany({
-    include: { statistics: true, season: true },
-  });
-  res.json(competitors);
->>>>>>> 6a2c484 (PlayerStatsAIAdvice Schema & CompetitorStatsAdvice)
 });
 
 app.post("/competitors", async (req, res) => {
