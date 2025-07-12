@@ -14,6 +14,7 @@ import { useAccount, useChainId } from "wagmi";
 import AnimatedTitle from "@/components/AnimatedTitle";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
+import { FAN_TOKEN_METADATA, SUPPORTED_CHAINS } from "@/config/contracts";
 import { useOnChainTokenBalances } from "@/hooks/useOnChainTokenBalances";
 
 const { width } = Dimensions.get("window");
@@ -28,23 +29,13 @@ function formatLargeNumber(num: number): string {
 const getChainEndpoint = (chainId: number): string | null => {
   console.log("Actual getChainEndpoint call with chainId:", chainId);
   switch (chainId) {
-    case 88888: // Chiliz Mainnet
-    case 88882: // Chiliz Testnet
+    case SUPPORTED_CHAINS.CHILIZ_MAINNET: // Chiliz Mainnet
+    case SUPPORTED_CHAINS.CHILIZ_SPICY_TESTNET: // Chiliz Testnet
       return "chiliz";
     default:
       return null;
   }
 };
-
-// Configuration des équipes fan tokens
-const FAN_TEAMS = [
-  { name: "PSG", symbol: "PSG", color: "#004170", emoji: "⚽" },
-  { name: "Real Madrid", symbol: "RMA", color: "#FEBE10", emoji: "👑" },
-  { name: "Barcelona", symbol: "BAR", color: "#A50044", emoji: "🔵" },
-  { name: "Manchester City", symbol: "CITY", color: "#6CABDD", emoji: "💙" },
-  { name: "Juventus", symbol: "JUV", color: "#000000", emoji: "⚪" },
-  { name: "Bayern Munich", symbol: "BAY", color: "#DC052D", emoji: "🔴" },
-];
 
 export default function HomeScreen() {
   const { open } = useAppKit();
@@ -68,16 +59,16 @@ export default function HomeScreen() {
 
   // Calculate total value (simplified - just count tokens since we don't have USD prices on-chain)
   const totalValue = tokens.reduce(
-    (total, token) => total + token.readableBalance,
+    (total: number, token: any) => total + token.readableBalance,
     0
   );
 
   // Helper function to get chain name
   const getChainName = (chainId: number): string => {
     switch (chainId) {
-      case 88888:
+      case SUPPORTED_CHAINS.CHILIZ_MAINNET:
         return "Chiliz Mainnet";
-      case 88882:
+      case SUPPORTED_CHAINS.CHILIZ_SPICY_TESTNET:
         return "Chiliz Spicy Testnet";
       case 1:
         return "Ethereum Mainnet";
@@ -181,7 +172,7 @@ export default function HomeScreen() {
                   Available Fan Tokens
                 </ThemedText>
                 <ThemedView style={styles.teamsGrid}>
-                  {FAN_TEAMS.map((team, index) => (
+                  {FAN_TOKEN_METADATA.map((team, index) => (
                     <ThemedView
                       key={index}
                       style={[styles.teamCard, { borderColor: team.color }]}
@@ -241,11 +232,12 @@ export default function HomeScreen() {
               <ThemedText style={styles.networkId}>
                 Chain ID: {chainId}
               </ThemedText>
-              {chainId !== 88882 && chainId !== 88888 && (
-                <ThemedText style={styles.networkWarning}>
-                  ⚠️ Switch to Chiliz network to see fan tokens
-                </ThemedText>
-              )}
+              {chainId !== SUPPORTED_CHAINS.CHILIZ_SPICY_TESTNET &&
+                chainId !== SUPPORTED_CHAINS.CHILIZ_MAINNET && (
+                  <ThemedText style={styles.networkWarning}>
+                    ⚠️ Switch to Chiliz network to see fan tokens
+                  </ThemedText>
+                )}
               {error && (
                 <ThemedText style={styles.errorText}>Error: {error}</ThemedText>
               )}
@@ -296,7 +288,7 @@ export default function HomeScreen() {
             <ThemedText style={styles.sectionTitle}>Featured Teams</ThemedText>
 
             <ThemedView style={styles.teamsGrid}>
-              {FAN_TEAMS.slice(0, 6).map((team, index) => (
+              {FAN_TOKEN_METADATA.slice(0, 6).map((team, index) => (
                 <ThemedView
                   key={index}
                   style={[styles.teamCard, { borderColor: team.color }]}
@@ -350,12 +342,12 @@ export default function HomeScreen() {
             ) : !error && tokens.length > 0 ? (
               <ThemedView style={styles.tokensList}>
                 {tokens
-                  .filter((token) => {
+                  .filter((token: any) => {
                     if (!hideSmallBalances) return true;
                     // Filter based on balance instead of USD value
                     return token.readableBalance > 0;
                   })
-                  .map((token, index) => {
+                  .map((token: any, index: number) => {
                     return (
                       <ThemedView
                         key={`${token.contractAddress}-${index}`}

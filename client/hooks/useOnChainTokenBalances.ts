@@ -1,190 +1,139 @@
-import { formatUnits } from "viem";
-import { useAccount, useChainId, useReadContracts } from "wagmi";
-import { CHILIZ_CONTRACTS } from "../contracts/chilizConfig";
-
-// Simple ERC20 ABI - just the functions we need
-const erc20Abi = [
-  {
-    name: "balanceOf",
-    type: "function",
-    stateMutability: "view",
-    inputs: [{ name: "account", type: "address" }],
-    outputs: [{ name: "", type: "uint256" }],
-  },
-  {
-    name: "decimals",
-    type: "function",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "uint8" }],
-  },
-  {
-    name: "symbol",
-    type: "function",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "string" }],
-  },
-  {
-    name: "name",
-    type: "function",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ name: "", type: "string" }],
-  },
-] as const;
+import { FAN_TOKEN_METADATA } from "@/config/contracts";
+import { useCallback, useEffect, useState } from "react";
+import { Address, erc20Abi } from "viem";
+import { useAccount, useReadContracts } from "wagmi";
 
 export interface TokenBalance {
+  contractAddress: Address;
   symbol: string;
-  name: string;
-  contractAddress: string;
-  balance: string;
-  decimals: number;
+  balance: bigint;
   readableBalance: number;
-  tokenBalance: string;
+  decimals: number;
 }
+
+// Get fan token addresses from metadata
+const FAN_TOKEN_ADDRESSES: Address[] = FAN_TOKEN_METADATA.map(
+  (token) => token.address
+).filter((address) => address !== ("0x..." as Address)); // Filter out placeholder addresses
 
 export function useOnChainTokenBalances() {
   const { address, isConnected } = useAccount();
-  const chainId = useChainId();
+  const [tokens, setTokens] = useState<TokenBalance[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Get fan token addresses for current chain
-  const chainConfig =
-    CHILIZ_CONTRACTS[chainId as keyof typeof CHILIZ_CONTRACTS];
+  // Create contracts array for batch reading
+  const contracts = FAN_TOKEN_ADDRESSES.flatMap((tokenAddress) => [
+    {
+      address: tokenAddress,
+      abi: erc20Abi,
+      functionName: "balanceOf",
+      args: [address as Address],
+    },
+    {
+      address: tokenAddress,
+      abi: erc20Abi,
+      functionName: "symbol",
+    },
+    {
+      address: tokenAddress,
+      abi: erc20Abi,
+      functionName: "decimals",
+    },
+  ]);
 
-  console.log("useOnChainTokenBalances Debug:", {
-    chainId,
-    isConnected,
-    address,
-    chainConfig,
-    availableChains: Object.keys(CHILIZ_CONTRACTS),
-  });
-
-  // Convert config to array format, fallback to localhost if chain not supported
-  const fanTokenAddresses = chainConfig
-    ? Object.entries(chainConfig.SUPPORTED_FAN_TOKENS).map(
-        ([symbol, address]) => ({
-          symbol,
-          name: `${symbol} Fan Token`,
-          address: address as `0x${string}`,
-        })
-      )
-    : Object.entries(CHILIZ_CONTRACTS[31337].SUPPORTED_FAN_TOKENS).map(
-        ([symbol, address]) => ({
-          symbol,
-          name: `${symbol} Fan Token`,
-          address: address as `0x${string}`,
-        })
-      );
-
-  console.log("Fan token addresses:", fanTokenAddresses);
-
-  // Only create contracts if user is connected and we have valid addresses
-  const contracts =
-    isConnected && address && fanTokenAddresses.length > 0
-      ? fanTokenAddresses.flatMap((token) => [
-          {
-            address: token.address,
-            abi: erc20Abi,
-            functionName: "balanceOf",
-            args: [address],
-          },
-          {
-            address: token.address,
-            abi: erc20Abi,
-            functionName: "decimals",
-          },
-          {
-            address: token.address,
-            abi: erc20Abi,
-            functionName: "symbol",
-          },
-          {
-            address: token.address,
-            abi: erc20Abi,
-            functionName: "name",
-          },
-        ])
-      : [];
-
-  const { data, isLoading, error, refetch } = useReadContracts({
-    contracts,
+  const {
+    data: contractResults,
+    isLoading,
+    refetch: refetchContracts,
+  } = useReadContracts({
+    contracts: contracts,
     query: {
-      enabled: !!address && !!isConnected && contracts.length > 0,
-      refetchInterval: 30000, // Refetch every 30 seconds
+      enabled: isConnected && !!address && FAN_TOKEN_ADDRESSES.length > 0,
     },
   });
 
-  console.log("Read contracts debug:", {
-    data,
-    isLoading,
-    error: error?.message,
-    contractsLength: contracts.length,
-    fanTokenAddressesLength: fanTokenAddresses.length,
-  });
-
-  // Process the results
-  const tokens: TokenBalance[] = [];
-
-  if (data && !isLoading) {
-    for (let i = 0; i < fanTokenAddresses.length; i++) {
-      const tokenInfo = fanTokenAddresses[i];
-      const baseIndex = i * 4;
-
-      const balanceResult = data[baseIndex];
-      const decimalsResult = data[baseIndex + 1];
-      const symbolResult = data[baseIndex + 2];
-      const nameResult = data[baseIndex + 3];
-
-      console.log(`Token ${tokenInfo.symbol} (${tokenInfo.address}) results:`, {
-        balance: balanceResult,
-        decimals: decimalsResult,
-        symbol: symbolResult,
-        name: nameResult,
-      });
-
-      if (
-        balanceResult?.status === "success" &&
-        decimalsResult?.status === "success" &&
-        symbolResult?.status === "success" &&
-        nameResult?.status === "success"
-      ) {
-        const balance = balanceResult.result as unknown as bigint;
-        const decimals = decimalsResult.result as unknown as number;
-        const symbol = symbolResult.result as unknown as string;
-        const name = nameResult.result as unknown as string;
-        const readableBalance = Number(formatUnits(balance, decimals));
-
-        // Include all tokens, even with 0 balance for debugging
-        tokens.push({
-          symbol,
-          name,
-          contractAddress: tokenInfo.address,
-          balance: balance.toString(),
-          decimals,
-          readableBalance,
-          tokenBalance: balance.toString(),
-        });
-      } else {
-        // Log failed calls for debugging
-        console.warn(`Failed to get data for token ${tokenInfo.symbol}:`, {
-          balanceError:
-            balanceResult?.status === "failure" ? balanceResult.error : null,
-          decimalsError:
-            decimalsResult?.status === "failure" ? decimalsResult.error : null,
-          symbolError:
-            symbolResult?.status === "failure" ? symbolResult.error : null,
-          nameError: nameResult?.status === "failure" ? nameResult.error : null,
-        });
-      }
+  const processTokenData = useCallback(() => {
+    if (!contractResults || !isConnected) {
+      setTokens([]);
+      return;
     }
-  }
+
+    try {
+      const tokenBalances: TokenBalance[] = [];
+
+      // Process results in groups of 3 (balance, symbol, decimals)
+      for (let i = 0; i < FAN_TOKEN_ADDRESSES.length; i++) {
+        const balanceResult = contractResults[i * 3];
+        const symbolResult = contractResults[i * 3 + 1];
+        const decimalsResult = contractResults[i * 3 + 2];
+
+        if (
+          balanceResult.status === "success" &&
+          symbolResult.status === "success" &&
+          decimalsResult.status === "success"
+        ) {
+          const balance = balanceResult.result as bigint;
+          const symbol = symbolResult.result as string;
+          const decimals = decimalsResult.result as number;
+          const readableBalance = Number(balance) / Math.pow(10, decimals);
+
+          // Include all tokens, even with zero balance for display purposes
+          tokenBalances.push({
+            contractAddress: FAN_TOKEN_ADDRESSES[i],
+            symbol,
+            balance,
+            readableBalance,
+            decimals,
+          });
+        }
+      }
+
+      setTokens(tokenBalances);
+      setError(null);
+    } catch (err) {
+      console.error("Error processing token data:", err);
+      setError("Failed to process token data");
+      setTokens([]);
+    }
+  }, [contractResults, isConnected]);
+
+  useEffect(() => {
+    setLoading(isLoading);
+  }, [isLoading]);
+
+  useEffect(() => {
+    processTokenData();
+  }, [processTokenData]);
+
+  useEffect(() => {
+    if (!isConnected) {
+      setTokens([]);
+      setError(null);
+    }
+  }, [isConnected]);
+
+  const refetch = useCallback(async () => {
+    if (!isConnected || !address) {
+      setTokens([]);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await refetchContracts();
+    } catch (err) {
+      console.error("Error refetching tokens:", err);
+      setError("Failed to fetch token balances");
+    } finally {
+      setLoading(false);
+    }
+  }, [isConnected, address, refetchContracts]);
 
   return {
     tokens,
-    loading: isLoading,
-    error: error?.message || null,
+    loading,
+    error,
     refetch,
-    total: tokens.length,
   };
 }

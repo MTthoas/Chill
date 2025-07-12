@@ -1,320 +1,236 @@
-import { useCallback, useEffect, useState } from "react";
+import { CONTRACT_ADDRESSES } from "@/config/contracts";
+import ChilizFanTokenTradingABI from "@/contracts/abi/ChilizFanTokenTrading.json";
+import ERC20ABI from "@/contracts/abi/ERC20.json";
+import FanTokenABI from "@/contracts/abi/FanToken.json";
+import { Address, parseEther } from "viem";
 import {
-  ContractIntent,
-  ContractService,
-  IntentParams,
-} from "../contracts/ContractService";
-import { WalletInfo, web3Provider } from "../contracts/Web3Provider";
+  useReadContract,
+  useWaitForTransactionReceipt,
+  useWriteContract,
+} from "wagmi";
 
-export interface UseContractsReturn {
-  // Wallet state
-  walletInfo: WalletInfo | null;
-  isConnecting: boolean;
-  isConnected: boolean;
-
-  // Contract state
-  contractService: ContractService | null;
-  intents: ContractIntent[];
-  isLoading: boolean;
-  error: string | null;
-  currentPrice: string | null;
-
-  // Actions
-  connectWallet: () => Promise<void>;
-  disconnectWallet: () => void;
-  switchNetwork: (chainId: number) => Promise<void>;
-  createIntent: (params: IntentParams) => Promise<string>;
-  cancelIntent: (intentId: string) => Promise<string>;
-  refreshIntents: () => Promise<void>;
-  refreshPrice: () => Promise<void>;
-  estimateGas: (params: IntentParams) => Promise<bigint>;
+// Hook for reading contract data
+export function useChilizFanTokenTradingRead(
+  functionName: string,
+  args?: any[],
+  options?: { enabled?: boolean }
+) {
+  return useReadContract({
+    address: CONTRACT_ADDRESSES.CHILIZ_FAN_TOKEN_TRADING,
+    abi: ChilizFanTokenTradingABI,
+    functionName,
+    args,
+    query: {
+      enabled: options?.enabled ?? true,
+    },
+  });
 }
 
-export function useContracts(): UseContractsReturn {
-  // Wallet state
-  const [walletInfo, setWalletInfo] = useState<WalletInfo | null>(null);
-  const [isConnecting, setIsConnecting] = useState(false);
+// Hook for writing to contract
+export function useChilizFanTokenTradingWrite() {
+  const { writeContract, isPending, error, data: hash } = useWriteContract();
 
-  // Contract state
-  const [contractService, setContractService] =
-    useState<ContractService | null>(null);
-  const [intents, setIntents] = useState<ContractIntent[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [currentPrice, setCurrentPrice] = useState<string | null>(null);
-
-  const isConnected = !!walletInfo?.isConnected;
-
-  // Initialize contract service when wallet is connected
-  useEffect(() => {
-    if (walletInfo?.isConnected) {
-      const provider = web3Provider.getProvider();
-      const signer = web3Provider.getSigner();
-
-      if (provider && signer) {
-        const service = new ContractService(
-          provider,
-          signer,
-          walletInfo.chainId
-        );
-        setContractService(service);
-
-        // Setup event listeners
-        service.setupEventListeners({
-          onIntentCreated: (event) => {
-            console.log("Intent created:", event);
-            refreshIntents();
-          },
-          onIntentExecuted: (event) => {
-            console.log("Intent executed:", event);
-            refreshIntents();
-          },
-          onCrossChainMessageSent: (event) => {
-            console.log("Cross-chain message sent:", event);
-          },
-        });
-      }
-    } else {
-      if (contractService) {
-        contractService.removeEventListeners();
-      }
-      setContractService(null);
-    }
-
-    return () => {
-      if (contractService) {
-        contractService.removeEventListeners();
-      }
-    };
-  }, [walletInfo]);
-
-  // Setup Web3 event listeners
-  useEffect(() => {
-    web3Provider.setupEventListeners({
-      onAccountsChanged: (accounts) => {
-        if (accounts.length === 0) {
-          disconnectWallet();
-        } else {
-          // Refresh wallet info
-          connectWallet();
-        }
-      },
-      onChainChanged: (chainId) => {
-        const newChainId = parseInt(chainId, 16);
-        if (walletInfo) {
-          setWalletInfo({
-            ...walletInfo,
-            chainId: newChainId,
-          });
-        }
-      },
-      onDisconnect: () => {
-        disconnectWallet();
-      },
+  const { isLoading: isConfirming, isSuccess: isConfirmed } =
+    useWaitForTransactionReceipt({
+      hash,
     });
 
-    return () => {
-      web3Provider.removeEventListeners();
-    };
-  }, []);
+  const buyFanTokens = (
+    tokenAddress: Address,
+    amount: bigint,
+    chzAmount: bigint
+  ) => {
+    writeContract({
+      address: CONTRACT_ADDRESSES.CHILIZ_FAN_TOKEN_TRADING,
+      abi: ChilizFanTokenTradingABI,
+      functionName: "buyFanTokens",
+      args: [tokenAddress, amount],
+      value: chzAmount,
+    });
+  };
 
-  // Connect wallet
-  const connectWallet = useCallback(async (): Promise<void> => {
-    if (isConnecting) return;
+  const sellFanTokens = (tokenAddress: Address, amount: bigint) => {
+    writeContract({
+      address: CONTRACT_ADDRESSES.CHILIZ_FAN_TOKEN_TRADING,
+      abi: ChilizFanTokenTradingABI,
+      functionName: "sellFanTokens",
+      args: [tokenAddress, amount],
+    });
+  };
 
-    setIsConnecting(true);
-    setError(null);
+  const addLiquidity = (tokenAddress: Address, amount: bigint) => {
+    writeContract({
+      address: CONTRACT_ADDRESSES.CHILIZ_FAN_TOKEN_TRADING,
+      abi: ChilizFanTokenTradingABI,
+      functionName: "addLiquidity",
+      args: [tokenAddress, amount],
+    });
+  };
 
-    try {
-      const walletInfo = await web3Provider.connectWallet();
-      setWalletInfo(walletInfo);
-    } catch (error: any) {
-      setError(error.message || "Failed to connect wallet");
-      throw error;
-    } finally {
-      setIsConnecting(false);
-    }
-  }, [isConnecting]);
-
-  // Disconnect wallet
-  const disconnectWallet = useCallback((): void => {
-    web3Provider.disconnect();
-    setWalletInfo(null);
-    setContractService(null);
-    setIntents([]);
-    setCurrentPrice(null);
-    setError(null);
-  }, []);
-
-  // Switch network
-  const switchNetwork = useCallback(
-    async (chainId: number): Promise<void> => {
-      setError(null);
-
-      try {
-        await web3Provider.switchNetwork(chainId);
-
-        if (walletInfo) {
-          setWalletInfo({
-            ...walletInfo,
-            chainId,
-          });
-        }
-      } catch (error: any) {
-        setError(error.message || "Failed to switch network");
-        throw error;
-      }
-    },
-    [walletInfo]
-  );
-
-  // Create intent
-  const createIntent = useCallback(
-    async (params: IntentParams): Promise<string> => {
-      if (!contractService) {
-        throw new Error("Contract service not available");
-      }
-
-      setError(null);
-      setIsLoading(true);
-
-      try {
-        const txHash = await contractService.createIntent(params);
-        await refreshIntents(); // Refresh intents after creation
-        return txHash;
-      } catch (error: any) {
-        setError(error.message || "Failed to create intent");
-        throw error;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [contractService]
-  );
-
-  // Cancel intent
-  const cancelIntent = useCallback(
-    async (intentId: string): Promise<string> => {
-      if (!contractService) {
-        throw new Error("Contract service not available");
-      }
-
-      setError(null);
-      setIsLoading(true);
-
-      try {
-        const txHash = await contractService.cancelIntent(intentId);
-        await refreshIntents(); // Refresh intents after cancellation
-        return txHash;
-      } catch (error: any) {
-        setError(error.message || "Failed to cancel intent");
-        throw error;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [contractService]
-  );
-
-  // Refresh intents
-  const refreshIntents = useCallback(async (): Promise<void> => {
-    if (!contractService || !walletInfo?.address) {
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const userIntents = await contractService.getUserIntents(
-        walletInfo.address
-      );
-      setIntents(userIntents);
-    } catch (error: any) {
-      setError(error.message || "Failed to fetch intents");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [contractService, walletInfo?.address]);
-
-  // Refresh price
-  const refreshPrice = useCallback(async (): Promise<void> => {
-    if (!contractService) {
-      return;
-    }
-
-    try {
-      const price = await contractService.getLatestPrice();
-      setCurrentPrice(price);
-    } catch (error: any) {
-      console.error("Failed to fetch price:", error);
-      // Don't set error for price fetch failures as it's not critical
-    }
-  }, [contractService]);
-
-  // Estimate gas
-  const estimateGas = useCallback(
-    async (params: IntentParams): Promise<bigint> => {
-      if (!contractService) {
-        throw new Error("Contract service not available");
-      }
-
-      return await contractService.estimateCreateIntentGas(params);
-    },
-    [contractService]
-  );
-
-  // Auto-refresh intents and price when contract service is available
-  useEffect(() => {
-    if (contractService && walletInfo?.address) {
-      refreshIntents();
-      refreshPrice();
-    }
-  }, [contractService, walletInfo?.address, refreshIntents, refreshPrice]);
+  const removeLiquidity = (tokenAddress: Address, amount: bigint) => {
+    writeContract({
+      address: CONTRACT_ADDRESSES.CHILIZ_FAN_TOKEN_TRADING,
+      abi: ChilizFanTokenTradingABI,
+      functionName: "removeLiquidity",
+      args: [tokenAddress, amount],
+    });
+  };
 
   return {
-    // Wallet state
-    walletInfo,
-    isConnecting,
-    isConnected,
-
-    // Contract state
-    contractService,
-    intents,
-    isLoading,
+    buyFanTokens,
+    sellFanTokens,
+    addLiquidity,
+    removeLiquidity,
+    isPending,
+    isConfirming,
+    isConfirmed,
     error,
-    currentPrice,
-
-    // Actions
-    connectWallet,
-    disconnectWallet,
-    switchNetwork,
-    createIntent,
-    cancelIntent,
-    refreshIntents,
-    refreshPrice,
-    estimateGas,
+    hash,
   };
 }
 
-// Hook for getting contract service for specific chain (read-only)
-export function useContractServiceForChain(chainId: number) {
-  const [contractService, setContractService] =
-    useState<ContractService | null>(null);
+// Hook for reading fan token data
+export function useFanTokenRead(
+  tokenAddress: Address,
+  functionName: string,
+  args?: any[],
+  options?: { enabled?: boolean }
+) {
+  return useReadContract({
+    address: tokenAddress,
+    abi: FanTokenABI,
+    functionName,
+    args,
+    query: {
+      enabled: options?.enabled ?? true,
+    },
+  });
+}
 
-  useEffect(() => {
-    try {
-      const provider = web3Provider.createProviderForChain(chainId);
-      // For read-only operations, we don't need a signer
-      const service = new ContractService(provider, provider as any, chainId);
-      setContractService(service);
-    } catch (error) {
-      console.error(
-        `Failed to create contract service for chain ${chainId}:`,
-        error
-      );
-    }
-  }, [chainId]);
+// Hook for ERC20 operations (approvals, balances, etc.)
+export function useERC20Read(
+  tokenAddress: Address,
+  functionName: string,
+  args?: any[],
+  options?: { enabled?: boolean }
+) {
+  return useReadContract({
+    address: tokenAddress,
+    abi: ERC20ABI,
+    functionName,
+    args,
+    query: {
+      enabled: options?.enabled ?? true,
+    },
+  });
+}
 
-  return contractService;
+// Hook for ERC20 write operations
+export function useERC20Write(tokenAddress: Address) {
+  const { writeContract, isPending, error, data: hash } = useWriteContract();
+
+  const { isLoading: isConfirming, isSuccess: isConfirmed } =
+    useWaitForTransactionReceipt({
+      hash,
+    });
+
+  const approve = (spender: Address, amount: bigint) => {
+    writeContract({
+      address: tokenAddress,
+      abi: ERC20ABI,
+      functionName: "approve",
+      args: [spender, amount],
+    });
+  };
+
+  const transfer = (to: Address, amount: bigint) => {
+    writeContract({
+      address: tokenAddress,
+      abi: ERC20ABI,
+      functionName: "transfer",
+      args: [to, amount],
+    });
+  };
+
+  return {
+    approve,
+    transfer,
+    isPending,
+    isConfirming,
+    isConfirmed,
+    error,
+    hash,
+  };
+}
+
+// Utility hooks for common contract reads
+export function useFanTokenInfo(tokenAddress: Address) {
+  const { data: name } = useFanTokenRead(tokenAddress, "name", [], {
+    enabled: !!tokenAddress,
+  });
+  const { data: symbol } = useFanTokenRead(tokenAddress, "symbol", [], {
+    enabled: !!tokenAddress,
+  });
+  const { data: totalSupply } = useFanTokenRead(
+    tokenAddress,
+    "totalSupply",
+    [],
+    { enabled: !!tokenAddress }
+  );
+  const { data: decimals } = useFanTokenRead(tokenAddress, "decimals", [], {
+    enabled: !!tokenAddress,
+  });
+
+  return {
+    name: name as string,
+    symbol: symbol as string,
+    totalSupply: totalSupply as bigint,
+    decimals: decimals as number,
+  };
+}
+
+export function useFanTokenBalance(
+  tokenAddress: Address,
+  userAddress?: Address
+) {
+  return useERC20Read(tokenAddress, "balanceOf", [userAddress], {
+    enabled: !!tokenAddress && !!userAddress,
+  });
+}
+
+export function useFanTokenAllowance(
+  tokenAddress: Address,
+  owner?: Address,
+  spender?: Address
+) {
+  return useERC20Read(tokenAddress, "allowance", [owner, spender], {
+    enabled: !!tokenAddress && !!owner && !!spender,
+  });
+}
+
+// Hook to get fan token trading info
+export function useFanTokenTradingInfo(tokenAddress: Address) {
+  const { data: tokenInfo } = useChilizFanTokenTradingRead(
+    "fanTokens",
+    [tokenAddress],
+    { enabled: !!tokenAddress }
+  );
+
+  const { data: buyPrice } = useChilizFanTokenTradingRead(
+    "getBuyPrice",
+    [tokenAddress, parseEther("1")], // Price for 1 token
+    { enabled: !!tokenAddress }
+  );
+
+  const { data: sellPrice } = useChilizFanTokenTradingRead(
+    "getSellPrice",
+    [tokenAddress, parseEther("1")], // Price for 1 token
+    { enabled: !!tokenAddress }
+  );
+
+  return {
+    tokenInfo: tokenInfo as any,
+    buyPrice: buyPrice as bigint,
+    sellPrice: sellPrice as bigint,
+  };
 }
