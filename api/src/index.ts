@@ -718,6 +718,226 @@ app.post("/player-statistics", async (req, res) => {
   }
 });
 
+// Update Competitor Statistics for a Season
+app.post("/season-statistics", async (req, res) => {
+  const { seasonId } = req.body;
+
+  if (!seasonId) {
+    return res.status(400).json({ error: "seasonId is required" });
+  }
+
+  try {
+    // Vérifie que la saison existe
+    const localSeason = await prisma.season.findUnique({
+      where: { special_id: String(seasonId) },
+      include: { competitors: true },
+    });
+
+    if (!localSeason) {
+      return res.status(404).json({
+        error:
+          "Season not found in local database. Please create the season first.",
+      });
+    }
+
+    // --- AJOUT : Importer tous les joueurs de la saison si besoin ---
+    console.log(
+      `[season-statistics] Import des joueurs pour la saison ${seasonId}`
+    );
+    const playersResponse = await fetch(
+      `https://api.sportradar.com/soccer/trial/v4/en/seasons/sr%3Aseason%3A${seasonId}/competitor_players.json`,
+      {
+        method: "GET",
+        headers: {
+          accept: "application/json",
+          "x-api-key": process.env.SPORTRADAR_API_KEY || "",
+        },
+      }
+    );
+    if (playersResponse.ok) {
+      const playersData = await playersResponse.json();
+      for (const competitorData of playersData.season_competitor_players) {
+        const competitorId = competitorData.id.replace("sr:competitor:", "");
+        const localCompetitor = await prisma.competitor.findUnique({
+          where: { special_id: competitorId },
+        });
+        if (!localCompetitor) {
+          console.warn(
+            `[season-statistics] Competitor ${competitorId} non trouvé en base, skip joueurs.`
+          );
+          continue;
+        }
+        for (const playerData of competitorData.players) {
+          const playerId = playerData.id.replace("sr:player:", "");
+          const upserted = await prisma.player.upsert({
+            where: { special_id: playerId },
+            update: { name: playerData.name },
+            create: {
+              name: playerData.name,
+              special_id: playerId,
+              competitorId: localCompetitor.id,
+            },
+          });
+          console.log(
+            `[season-statistics] Joueur importé/upserté: ${playerData.name} (${playerId}) pour competitor ${competitorId}`
+          );
+        }
+      }
+    } else {
+      console.error(
+        `[season-statistics] Erreur lors de la récupération des joueurs: ${playersResponse.status}`
+      );
+    }
+    // --- FIN AJOUT ---
+
+    const results: any = [];
+
+    // Fonction utilitaire pour sleep
+    function sleep(ms: number) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    // Parallélisation contrôlée avec Promise.all et sleep entre chaque appel
+    await Promise.all(
+      localSeason.competitors.map(async (competitor, idx) => {
+        // Ajoute un délai progressif pour chaque appel (ex: 1200ms entre chaque)
+        await sleep(idx * 1200);
+        console.log(
+          `Updating statistics for competitor ${competitor.name} (${competitor.special_id}) in season ${seasonId}`
+        );
+        const competitorId = competitor.special_id;
+
+        // Appel à l'API SportRadar pour récupérer les stats de l'équipe
+        const statisticsResponse = await fetch(
+          `https://api.sportradar.com/soccer/trial/v4/en/seasons/sr%3Aseason%3A${seasonId}/competitors/sr%3Acompetitor%3A${competitorId}/statistics.json`,
+          {
+            method: "GET",
+            headers: {
+              accept: "application/json",
+              "x-api-key": process.env.SPORTRADAR_API_KEY || "",
+            },
+          }
+        );
+
+        if (!statisticsResponse.ok) {
+          console.error(
+            `Erreur SportRadar pour competitor ${competitorId} saison ${seasonId}: ${statisticsResponse.status}`
+          );
+          results.push({
+            competitorId,
+            error: `SportRadar API error: ${statisticsResponse.status}`,
+          });
+          return;
+        }
+
+        const statisticsData = await statisticsResponse.json();
+
+        // Update competitor statistics
+        const competitorStats = [];
+        if (statisticsData.competitor?.statistics) {
+          for (const [statType, statValue] of Object.entries(
+            statisticsData.competitor.statistics
+          )) {
+            const existingStat = await prisma.statistique.findFirst({
+              where: {
+                competitorId: competitor.id,
+                type: statType,
+              },
+            });
+
+            let stat;
+            if (existingStat) {
+              stat = await prisma.statistique.update({
+                where: { id: existingStat.id },
+                data: { value: Number(statValue) },
+              });
+            } else {
+              stat = await prisma.statistique.create({
+                data: {
+                  type: statType,
+                  value: Number(statValue),
+                  competitorId: competitor.id,
+                },
+              });
+            }
+            competitorStats.push(stat);
+          }
+        }
+
+        // Update player statistics
+        const playerStats = [];
+        if (statisticsData.competitor?.players) {
+          console.log(
+            `Updating statistics for players in competitor ${competitorId}`
+          );
+          for (const playerData of statisticsData.competitor.players) {
+            const playerId = playerData.id.replace("sr:player:", "");
+            const localPlayer = await prisma.player.findUnique({
+              where: { special_id: playerId },
+            });
+            if (!localPlayer) {
+              console.warn(
+                `[season-statistics] Joueur ${playerId} non trouvé en base, skip stats.`
+              );
+              continue;
+            }
+
+            if (playerData.statistics) {
+              for (const [statType, statValue] of Object.entries(
+                playerData.statistics
+              )) {
+                const existingStat = await prisma.playerStatistique.findFirst({
+                  where: {
+                    playerId: localPlayer.id,
+                    type: statType,
+                  },
+                });
+
+                let stat;
+                if (existingStat) {
+                  stat = await prisma.playerStatistique.update({
+                    where: { id: existingStat.id },
+                    data: { value: Number(statValue) },
+                  });
+                } else {
+                  stat = await prisma.playerStatistique.create({
+                    data: {
+                      type: statType,
+                      value: Number(statValue),
+                      playerId: localPlayer.id,
+                    },
+                  });
+                }
+                playerStats.push(stat);
+              }
+            } else {
+              console.warn(
+                `[season-statistics] Pas de statistiques pour joueur ${playerData.name} (${playerId})`
+              );
+            }
+          }
+        }
+
+        results.push({
+          competitorId,
+          competitorStatsCount: competitorStats.length,
+          playerStatsCount: playerStats.length,
+        });
+      })
+    );
+
+    res.json({
+      seasonId,
+      updated: results,
+      message:
+        "Statistiques mises à jour pour toutes les équipes de la saison.",
+    });
+  } catch (error) {
+    console.error("Error updating season statistics:", error);
+    res.status(500).json({ error: "Failed to update season statistics" });
+  }
+});
+
 // GET Competitor Statistics
 app.get("/competitor-statistics", async (req, res) => {
   try {
@@ -794,6 +1014,58 @@ app.get("/competitor-statistics", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch competitor statistics" });
   }
 });
+
+// Récupérer toutes les statistiques d'une équipe pour une compétition
+app.get(
+  "/competitors/:competitorId/seasons/:seasonId/statistics",
+  async (req, res) => {
+    const { competitorId, seasonId } = req.params;
+
+    try {
+      // On récupère toutes les statistiques du competitor pour la saison donnée
+      const competitor = await prisma.competitor.findUnique({
+        where: { special_id: competitorId },
+        include: {
+          statistics: true,
+          season: true,
+          players: {
+            include: {
+              statistics: true,
+            },
+          },
+        },
+      });
+
+      if (!competitor) {
+        return res.status(404).json({ error: "Competitor not found" });
+      }
+
+      // Vérifie que la saison correspond
+      if (competitor.season.id !== parseInt(seasonId)) {
+        return res.status(400).json({
+          error: "This competitor does not belong to the given season",
+        });
+      }
+
+      res.json({
+        competitor: {
+          id: competitor.id,
+          name: competitor.name,
+          season: competitor.season,
+          statistics: competitor.statistics,
+          players: competitor.players.map((player) => ({
+            id: player.id,
+            name: player.name,
+            statistics: player.statistics,
+          })),
+        },
+      });
+    } catch (error) {
+      console.error("Error fetching competitor statistics for season:", error);
+      res.status(500).json({ error: "Failed to fetch statistics" });
+    }
+  }
+);
 
 // GET Player Statistics
 app.get("/player-statistics", async (req, res) => {
@@ -903,6 +1175,211 @@ app.get("/players/:special_id/statistics", async (req, res) => {
   });
   if (!player) return res.status(404).json({ error: "Joueur non trouvé" });
   res.json(player.statistics);
+});
+
+// GET Upcoming Matches for a Season
+app.get("/seasons/:seasonId/upcoming-matches", async (req, res) => {
+  const { seasonId } = req.params;
+
+  try {
+    const season = await prisma.season.findUnique({
+      where: { special_id: seasonId },
+      include: {
+        upcomingMatches: {
+          include: {
+            home_competitor: true,
+            away_competitor: true,
+          },
+          orderBy: {
+            start_time: "asc",
+          },
+        },
+      },
+    });
+
+    if (!season) {
+      return res.status(404).json({ error: "Season not found" });
+    }
+
+    const now = new Date();
+    const upcomingMatches = season.upcomingMatches.filter(
+      (match) => new Date(match.start_time) > now
+    );
+
+    res.json({
+      season: {
+        id: season.id,
+        special_id: season.special_id,
+        name: season.name,
+      },
+      upcomingMatchesCount: upcomingMatches.length,
+      upcomingMatches: upcomingMatches.map((match) => ({
+        id: match.id,
+        special_id: match.special_id,
+        home_team: match.home_competitor.name,
+        away_team: match.away_competitor.name,
+        start_time: match.start_time,
+        venue: match.venue,
+        status: match.status,
+      })),
+    });
+  } catch (error) {
+    console.error("Error fetching upcoming matches:", error);
+    res.status(500).json({ error: "Failed to fetch upcoming matches" });
+  }
+});
+
+// POST Upcoming Matches - Fetch and store from SportRadar API
+app.post("/seasons/:seasonId/upcoming-matches", async (req, res) => {
+  const { seasonId } = req.params;
+
+  try {
+    // Vérifie que la saison existe
+    const season = await prisma.season.findUnique({
+      where: { special_id: seasonId },
+      include: { competitors: true },
+    });
+
+    if (!season) {
+      return res.status(404).json({ error: "Season not found" });
+    }
+
+    console.log(`Fetching matches for season ${seasonId}`);
+
+    // Appel à l'API SportRadar pour récupérer le calendrier de la saison
+    const matchesResponse = await fetch(
+      `https://api.sportradar.com/soccer-extended/trial/v4/en/seasons/sr%3Aseason%3A${seasonId}/schedules.json`,
+      {
+        method: "GET",
+        headers: {
+          accept: "application/json",
+          "x-api-key": process.env.SPORTRADAR_API_KEY || "",
+        },
+      }
+    );
+
+    if (!matchesResponse.ok) {
+      throw new Error(`SportRadar API error: ${matchesResponse.status}`);
+    }
+
+    const scheduleData = await matchesResponse.json();
+    console.log(
+      `Fetched ${
+        scheduleData.schedules?.length || 0
+      } scheduled events for season ${seasonId}`
+    );
+
+    const savedMatches = [];
+    const now = new Date();
+
+    if (scheduleData.schedules && scheduleData.schedules.length > 0) {
+      for (const schedule of scheduleData.schedules) {
+        try {
+          const sportEvent = schedule.sport_event;
+          const matchStartTime = new Date(sportEvent.start_time);
+
+          // Ne traiter que les matchs futurs
+          if (matchStartTime <= now) continue;
+
+          const matchId = sportEvent.id.replace("sr:sport_event:", "");
+
+          // Vérifier qu'on a bien deux équipes
+          if (!sportEvent.competitors || sportEvent.competitors.length < 2) {
+            console.warn(
+              `Not enough competitors for match ${matchId}, skipping`
+            );
+            continue;
+          }
+
+          // Extraire les IDs des équipes
+          const homeCompetitorId = sportEvent.competitors[0]?.id.replace(
+            "sr:competitor:",
+            ""
+          );
+          const awayCompetitorId = sportEvent.competitors[1]?.id.replace(
+            "sr:competitor:",
+            ""
+          );
+
+          // Trouve les competitors locaux
+          const homeCompetitor = await prisma.competitor.findUnique({
+            where: { special_id: homeCompetitorId },
+          });
+          const awayCompetitor = await prisma.competitor.findUnique({
+            where: { special_id: awayCompetitorId },
+          });
+
+          if (!homeCompetitor || !awayCompetitor) {
+            console.warn(
+              `Competitors not found for match ${matchId} (home: ${homeCompetitorId}, away: ${awayCompetitorId}), skipping`
+            );
+            continue;
+          }
+
+          // Upsert du match
+          const savedMatch = await prisma.upcomingMatch.upsert({
+            where: { special_id: matchId },
+            update: {
+              start_time: matchStartTime,
+              venue: sportEvent.venue?.name || null,
+              status: schedule.sport_event_status?.status || "scheduled",
+            },
+            create: {
+              special_id: matchId,
+              homeCompetitorId: homeCompetitor.id,
+              awayCompetitorId: awayCompetitor.id,
+              seasonId: season.id,
+              start_time: matchStartTime,
+              venue: sportEvent.venue?.name || null,
+              status: schedule.sport_event_status?.status || "scheduled",
+            },
+            include: {
+              home_competitor: true,
+              away_competitor: true,
+            },
+          });
+
+          savedMatches.push(savedMatch);
+          console.log(
+            `Saved upcoming match: ${savedMatch.home_competitor.name} vs ${
+              savedMatch.away_competitor.name
+            } on ${matchStartTime.toISOString()}`
+          );
+        } catch (matchError) {
+          console.warn(
+            `Error processing match ${schedule.sport_event?.id}:`,
+            matchError
+          );
+          continue;
+        }
+      }
+    }
+
+    res.json({
+      season: {
+        id: season.id,
+        special_id: season.special_id,
+        name: season.name,
+      },
+      message: `Successfully imported ${savedMatches.length} upcoming matches`,
+      totalScheduledEvents: scheduleData.schedules?.length || 0,
+      upcomingMatches: savedMatches.map((match) => ({
+        id: match.id,
+        special_id: match.special_id,
+        home_team: match.home_competitor.name,
+        away_team: match.away_competitor.name,
+        start_time: match.start_time,
+        venue: match.venue,
+        status: match.status,
+      })),
+    });
+  } catch (error) {
+    console.error("Error importing upcoming matches:", error);
+    res.status(500).json({
+      error: "Failed to import upcoming matches from SportRadar API",
+      details: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
 });
 
 const port = process.env.PORT || 3000;

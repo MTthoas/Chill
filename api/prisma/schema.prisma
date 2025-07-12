@@ -18,6 +18,7 @@ model Season {
   year           String
   competition_id String
   competitors    Competitor[]
+  upcomingMatches UpcomingMatch[]
 }
 
 model Competitor {
@@ -34,6 +35,8 @@ model Competitor {
   players      Player[]
   statistics   Statistique[]
   competitorStatsAdvices CompetitorStatsAdvice[]
+  homeMatches  UpcomingMatch[] @relation("HomeMatches")
+  awayMatches  UpcomingMatch[] @relation("AwayMatches")
 }
 
 model Player {
@@ -52,6 +55,8 @@ model Statistique {
   value        Float
   competitor   Competitor  @relation(fields: [competitorId], references: [id])
   competitorId Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model PlayerStatistique {
@@ -60,6 +65,8 @@ model PlayerStatistique {
   value        Float
   player       Player      @relation(fields: [playerId], references: [id])
   playerId     Int
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model PlayerStatsAIAdvice {
@@ -75,5 +82,22 @@ model CompetitorStatsAdvice {
   competitor   Competitor  @relation(fields: [competitorId], references: [id])
   competitorId Int
   advice       String
+  order        String      // "buy" ou "sell"
   created_at   DateTime    @default(now())
+}
+
+model UpcomingMatch {
+  id                Int         @id @default(autoincrement())
+  special_id        String      @unique // sr:match:xxxxx
+  home_competitor   Competitor  @relation("HomeMatches", fields: [homeCompetitorId], references: [id])
+  homeCompetitorId  Int
+  away_competitor   Competitor  @relation("AwayMatches", fields: [awayCompetitorId], references: [id])
+  awayCompetitorId  Int
+  season            Season      @relation(fields: [seasonId], references: [id])
+  seasonId          Int
+  start_time        DateTime
+  venue             String?
+  status            String      @default("scheduled")
+  created_at        DateTime    @default(now())
+  updated_at        DateTime    @updatedAt
 }
