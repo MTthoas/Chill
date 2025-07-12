@@ -473,8 +473,8 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     width: 90,
-    height: 90,
-    borderRadius: 45,
+    height: "auto",
+    borderRadius: 90,
     backgroundColor: "rgba(0, 0, 0, 0)",
     justifyContent: "center",
     alignItems: "center",
@@ -492,6 +492,7 @@ const styles = StyleSheet.create({
     color: "#fff",
     textAlign: "center",
     marginBottom: 12,
+    paddingTop: 16,
     letterSpacing: -1,
   },
   tagline: {
