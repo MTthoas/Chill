@@ -1,5 +1,6 @@
 import { formatUnits } from "viem";
-import { useAccount, useReadContracts } from "wagmi";
+import { useAccount, useChainId, useReadContracts } from "wagmi";
+import { CHILIZ_CONTRACTS } from "../contracts/chilizConfig";
 
 // Simple ERC20 ABI - just the functions we need
 const erc20Abi = [
@@ -33,40 +34,6 @@ const erc20Abi = [
   },
 ] as const;
 
-// Known Chiliz fan token addresses
-const FAN_TOKEN_ADDRESSES = [
-  {
-    symbol: "PSG",
-    name: "Paris Saint-Germain Fan Token",
-    address: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0" as `0x${string}`,
-  },
-  {
-    symbol: "RMA",
-    name: "Real Madrid Fan Token",
-    address: "0x0165878A594ca255338adfa4d48449f69242Eb8F" as `0x${string}`,
-  },
-  {
-    symbol: "BAR",
-    name: "FC Barcelona Fan Token",
-    address: "0x610178dA211FEF7D417bC0e6FeD39F05609AD788" as `0x${string}`,
-  },
-  {
-    symbol: "CITY",
-    name: "Manchester City Fan Token",
-    address: "0x9A676e781A523b5d0C0e43731313A708CB607508" as `0x${string}`,
-  },
-  {
-    symbol: "JUV",
-    name: "Juventus Fan Token",
-    address: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed" as `0x${string}`,
-  },
-  {
-    symbol: "BAY",
-    name: "Bayern Munich Fan Token",
-    address: "0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1" as `0x${string}`,
-  },
-] as const;
-
 export interface TokenBalance {
   symbol: string;
   name: string;
@@ -78,53 +45,103 @@ export interface TokenBalance {
 }
 
 export function useOnChainTokenBalances() {
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
+  const chainId = useChainId();
 
-  // Create contract calls for each token (balance + decimals + symbol + name)
-  const contracts = FAN_TOKEN_ADDRESSES.flatMap((token) => [
-    {
-      address: token.address,
-      abi: erc20Abi,
-      functionName: "balanceOf",
-      args: [address],
-    },
-    {
-      address: token.address,
-      abi: erc20Abi,
-      functionName: "decimals",
-    },
-    {
-      address: token.address,
-      abi: erc20Abi,
-      functionName: "symbol",
-    },
-    {
-      address: token.address,
-      abi: erc20Abi,
-      functionName: "name",
-    },
-  ]);
+  // Get fan token addresses for current chain
+  const chainConfig =
+    CHILIZ_CONTRACTS[chainId as keyof typeof CHILIZ_CONTRACTS];
+
+  console.log("useOnChainTokenBalances Debug:", {
+    chainId,
+    isConnected,
+    address,
+    chainConfig,
+    availableChains: Object.keys(CHILIZ_CONTRACTS),
+  });
+
+  // Convert config to array format, fallback to localhost if chain not supported
+  const fanTokenAddresses = chainConfig
+    ? Object.entries(chainConfig.SUPPORTED_FAN_TOKENS).map(
+        ([symbol, address]) => ({
+          symbol,
+          name: `${symbol} Fan Token`,
+          address: address as `0x${string}`,
+        })
+      )
+    : Object.entries(CHILIZ_CONTRACTS[31337].SUPPORTED_FAN_TOKENS).map(
+        ([symbol, address]) => ({
+          symbol,
+          name: `${symbol} Fan Token`,
+          address: address as `0x${string}`,
+        })
+      );
+
+  console.log("Fan token addresses:", fanTokenAddresses);
+
+  // Only create contracts if user is connected and we have valid addresses
+  const contracts =
+    isConnected && address && fanTokenAddresses.length > 0
+      ? fanTokenAddresses.flatMap((token) => [
+          {
+            address: token.address,
+            abi: erc20Abi,
+            functionName: "balanceOf",
+            args: [address],
+          },
+          {
+            address: token.address,
+            abi: erc20Abi,
+            functionName: "decimals",
+          },
+          {
+            address: token.address,
+            abi: erc20Abi,
+            functionName: "symbol",
+          },
+          {
+            address: token.address,
+            abi: erc20Abi,
+            functionName: "name",
+          },
+        ])
+      : [];
 
   const { data, isLoading, error, refetch } = useReadContracts({
     contracts,
     query: {
-      enabled: !!address,
+      enabled: !!address && !!isConnected && contracts.length > 0,
       refetchInterval: 30000, // Refetch every 30 seconds
     },
+  });
+
+  console.log("Read contracts debug:", {
+    data,
+    isLoading,
+    error: error?.message,
+    contractsLength: contracts.length,
+    fanTokenAddressesLength: fanTokenAddresses.length,
   });
 
   // Process the results
   const tokens: TokenBalance[] = [];
 
   if (data && !isLoading) {
-    for (let i = 0; i < FAN_TOKEN_ADDRESSES.length; i++) {
-      const tokenInfo = FAN_TOKEN_ADDRESSES[i];
+    for (let i = 0; i < fanTokenAddresses.length; i++) {
+      const tokenInfo = fanTokenAddresses[i];
       const baseIndex = i * 4;
 
       const balanceResult = data[baseIndex];
       const decimalsResult = data[baseIndex + 1];
       const symbolResult = data[baseIndex + 2];
       const nameResult = data[baseIndex + 3];
+
+      console.log(`Token ${tokenInfo.symbol} (${tokenInfo.address}) results:`, {
+        balance: balanceResult,
+        decimals: decimalsResult,
+        symbol: symbolResult,
+        name: nameResult,
+      });
 
       if (
         balanceResult?.status === "success" &&
@@ -138,18 +155,27 @@ export function useOnChainTokenBalances() {
         const name = nameResult.result as unknown as string;
         const readableBalance = Number(formatUnits(balance, decimals));
 
-        // Only include tokens with balance > 0
-        if (readableBalance > 0) {
-          tokens.push({
-            symbol,
-            name,
-            contractAddress: tokenInfo.address,
-            balance: balance.toString(),
-            decimals,
-            readableBalance,
-            tokenBalance: balance.toString(),
-          });
-        }
+        // Include all tokens, even with 0 balance for debugging
+        tokens.push({
+          symbol,
+          name,
+          contractAddress: tokenInfo.address,
+          balance: balance.toString(),
+          decimals,
+          readableBalance,
+          tokenBalance: balance.toString(),
+        });
+      } else {
+        // Log failed calls for debugging
+        console.warn(`Failed to get data for token ${tokenInfo.symbol}:`, {
+          balanceError:
+            balanceResult?.status === "failure" ? balanceResult.error : null,
+          decimalsError:
+            decimalsResult?.status === "failure" ? decimalsResult.error : null,
+          symbolError:
+            symbolResult?.status === "failure" ? symbolResult.error : null,
+          nameError: nameResult?.status === "failure" ? nameResult.error : null,
+        });
       }
     }
   }

@@ -25,18 +25,6 @@ function formatLargeNumber(num: number): string {
   return num.toFixed(2);
 }
 
-// Fonction pour obtenir le nom de la chaîne
-const getChainName = (chainId: number): string => {
-  switch (chainId) {
-    case 88888:
-      return "Chiliz Mainnet";
-    case 88882:
-      return "Chiliz Testnet";
-    default:
-      return `Chain ${chainId}`;
-  }
-};
-
 const getChainEndpoint = (chainId: number): string | null => {
   console.log("Actual getChainEndpoint call with chainId:", chainId);
   switch (chainId) {
@@ -60,11 +48,20 @@ const FAN_TEAMS = [
 
 export default function HomeScreen() {
   const { open } = useAppKit();
-  const { isConnected } = useAccount();
+  const { isConnected, address } = useAccount();
   const chainId = useChainId();
 
   // Use on-chain token balances instead of backend API
   const { tokens, loading, error, refetch } = useOnChainTokenBalances();
+
+  console.log("HomeScreen Debug:", {
+    isConnected,
+    address,
+    chainId,
+    tokens,
+    loading,
+    error,
+  });
 
   const [refreshing, setRefreshing] = useState(false);
   const [hideSmallBalances, setHideSmallBalances] = useState(false);
@@ -74,6 +71,20 @@ export default function HomeScreen() {
     (total, token) => total + token.readableBalance,
     0
   );
+
+  // Helper function to get chain name
+  const getChainName = (chainId: number): string => {
+    switch (chainId) {
+      case 88888:
+        return "Chiliz Mainnet";
+      case 88882:
+        return "Chiliz Spicy Testnet";
+      case 1:
+        return "Ethereum Mainnet";
+      default:
+        return `Chain ${chainId}`;
+    }
+  };
 
   // Fonction de refresh
   const onRefresh = useCallback(async () => {
@@ -208,7 +219,7 @@ export default function HomeScreen() {
         >
           <ThemedView style={styles.dashboardHeader}>
             <AnimatedTitle />
-            
+
             <ThemedView style={styles.walletSection}>
               <ThemedText style={styles.walletLabel}>Your Wallet</ThemedText>
               <ThemedText style={styles.chainIndicator}>
@@ -217,6 +228,27 @@ export default function HomeScreen() {
               <ThemedView style={styles.walletButtonContainer}>
                 <AppKitButton />
               </ThemedView>
+            </ThemedView>
+          </ThemedView>
+
+          <ThemedView style={styles.statsSection}>
+            <ThemedText style={styles.sectionTitle}>Network Status</ThemedText>
+
+            <ThemedView style={styles.networkInfo}>
+              <ThemedText style={styles.networkLabel}>
+                Connected to: {getChainName(chainId)}
+              </ThemedText>
+              <ThemedText style={styles.networkId}>
+                Chain ID: {chainId}
+              </ThemedText>
+              {chainId !== 88882 && chainId !== 88888 && (
+                <ThemedText style={styles.networkWarning}>
+                  ⚠️ Switch to Chiliz network to see fan tokens
+                </ThemedText>
+              )}
+              {error && (
+                <ThemedText style={styles.errorText}>Error: {error}</ThemedText>
+              )}
             </ThemedView>
           </ThemedView>
 
@@ -830,6 +862,33 @@ const styles = StyleSheet.create({
     color: "#ef4444",
     textAlign: "center",
     marginBottom: 20,
+  },
+
+  // Network Status Styles
+  networkInfo: {
+    backgroundColor: "rgba(59, 130, 246, 0.1)",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "rgba(59, 130, 246, 0.3)",
+  },
+  networkLabel: {
+    fontSize: 16,
+    color: "#3b82f6",
+    fontWeight: "600",
+    marginBottom: 4,
+  },
+  networkId: {
+    fontSize: 14,
+    color: "#6b7280",
+    marginBottom: 8,
+  },
+  networkWarning: {
+    fontSize: 14,
+    color: "#f59e0b",
+    fontWeight: "500",
+    textAlign: "center",
   },
 
   // Teams Section Styles

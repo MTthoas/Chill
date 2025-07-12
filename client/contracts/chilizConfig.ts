@@ -15,12 +15,15 @@ export const CHILIZ_CONTRACTS = {
 
   // Chiliz Testnet (Chain ID: 88882)
   88882: {
-    CHZ_TOKEN: "0x721ef6871f1c4efe730dce047d40d1743b886946", // CHZ testnet
-    FAN_TOKEN_TRADING: "", // À remplir avec l'adresse déployée
+    CHZ_TOKEN: "0xD379473BAaEa19877138536c6532AC587A99f292", // CHZ testnet (deployed)
+    FAN_TOKEN_TRADING: "0x3A7Ffcdd399FDF2494355aAf3b5Bd6b6B48b09c7", // Trading Contract (deployed)
     SUPPORTED_FAN_TOKENS: {
-      // Tokens de test
-      TEST_PSG: "",
-      TEST_BAR: "",
+      PSG: "0x8F2888d10276F2A4Fe8F4b3D3F88B96B7A58F631",
+      RMA: "0x7d502ff1BcD60c65BA6B24d95459991e9263e649",
+      BAR: "0x6969a1a85537d6582B78473f3519D7e88887f91e",
+      CITY: "0xF686528078f55EaDF2d0e0DD57560e055D1907EF",
+      JUV: "0x473bD13c150852f52b62c9a4D2bA0F72B99D9986",
+      BAY: "0x3A09F2193797864608E141F877dDcdCd1a44484f",
     },
   },
 

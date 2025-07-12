@@ -75,7 +75,7 @@ export default function NewsScreen() {
         errorMessage.includes("fetch")
       ) {
         setError(
-          `Cannot connect to news service. Check if the backend is running at ${config.API_NEWS_AGENT_URL}`
+          `Cannot connect to news service. Check if the backend is running`
         );
       } else {
         setError(`Failed to fetch news: ${errorMessage}`);

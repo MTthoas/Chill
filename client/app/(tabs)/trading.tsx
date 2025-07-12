@@ -54,8 +54,8 @@ interface WalletApiResponse {
 
 const getChainEndpoint = (chainId: number): string | null => {
   switch (chainId) {
-    case 8888:
-    case 8882:
+    case 88888:
+    case 88882:
       return "chiliz";
     default:
       return null;

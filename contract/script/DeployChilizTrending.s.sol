@@ -10,7 +10,7 @@ contract DeployContracts is Script {
     function run() external {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPrivateKey);
-        
+
         console.log("Deploying contracts with account:", deployer);
         console.log("Account balance:", deployer.balance);
 
@@ -50,7 +50,7 @@ contract DeployContracts is Script {
         FanToken barToken = new FanToken(
             "FC Barcelona Fan Token",
             "BAR",
-            "FC Barcelona", 
+            "FC Barcelona",
             "La Liga",
             "Spain",
             "https://assets.socios.com/club-logos/bar-logo.png",
@@ -74,7 +74,7 @@ contract DeployContracts is Script {
             "JUV",
             "Juventus",
             "Serie A",
-            "Italy", 
+            "Italy",
             "https://assets.socios.com/club-logos/juv-logo.png",
             20000000 // 20M tokens
         );
@@ -92,15 +92,15 @@ contract DeployContracts is Script {
         console.log("BAY Token deployed to:", address(bayToken));
 
         // 4. Ajouter les fan tokens au contrat de trading avec vos prix
-        uint256 minTradeAmount = 1 ether;  // 1 token minimum
+        uint256 minTradeAmount = 1 ether; // 1 token minimum
 
         // PSG - 2 CHZ buy, 1.8 CHZ sell
         tradingContract.addFanToken(
             address(psgToken),
             "Paris Saint-Germain Fan Token",
             "PSG",
-            2 ether,    // 2 CHZ
-            1.8 ether,  // 1.8 CHZ
+            2 ether, // 2 CHZ
+            1.8 ether, // 1.8 CHZ
             minTradeAmount
         );
 
@@ -109,18 +109,18 @@ contract DeployContracts is Script {
             address(rmaToken),
             "Real Madrid Fan Token",
             "RMA",
-            2.5 ether,  // 2.5 CHZ
-            2.2 ether,  // 2.2 CHZ
+            2.5 ether, // 2.5 CHZ
+            2.2 ether, // 2.2 CHZ
             minTradeAmount
         );
 
         // Barcelona - 2.3 CHZ buy, 2.0 CHZ sell
         tradingContract.addFanToken(
             address(barToken),
-            "FC Barcelona Fan Token", 
+            "FC Barcelona Fan Token",
             "BAR",
-            2.3 ether,  // 2.3 CHZ
-            2.0 ether,  // 2.0 CHZ
+            2.3 ether, // 2.3 CHZ
+            2.0 ether, // 2.0 CHZ
             minTradeAmount
         );
 
@@ -129,8 +129,8 @@ contract DeployContracts is Script {
             address(cityToken),
             "Manchester City Fan Token",
             "CITY",
-            2.1 ether,  // 2.1 CHZ
-            1.9 ether,  // 1.9 CHZ
+            2.1 ether, // 2.1 CHZ
+            1.9 ether, // 1.9 CHZ
             minTradeAmount
         );
 
@@ -138,9 +138,9 @@ contract DeployContracts is Script {
         tradingContract.addFanToken(
             address(juvToken),
             "Juventus Fan Token",
-            "JUV", 
-            1.9 ether,  // 1.9 CHZ
-            1.7 ether,  // 1.7 CHZ
+            "JUV",
+            1.9 ether, // 1.9 CHZ
+            1.7 ether, // 1.7 CHZ
             minTradeAmount
         );
 
@@ -149,22 +149,23 @@ contract DeployContracts is Script {
             address(bayToken),
             "Bayern Munich Fan Token",
             "BAY",
-            2.4 ether,  // 2.4 CHZ
-            2.1 ether,  // 2.1 CHZ
+            2.4 ether, // 2.4 CHZ
+            2.1 ether, // 2.1 CHZ
             minTradeAmount
         );
 
         // 5. Transférer des tokens au contrat de trading pour la liquidité
         uint256 liquidityAmount = 1000000 ether; // 1M tokens par équipe
-        
-        psgToken.transfer(address(tradingContract), liquidityAmount);
-        rmaToken.transfer(address(tradingContract), liquidityAmount);
-        barToken.transfer(address(tradingContract), liquidityAmount);
-        cityToken.transfer(address(tradingContract), liquidityAmount);
-        juvToken.transfer(address(tradingContract), liquidityAmount);
-        bayToken.transfer(address(tradingContract), liquidityAmount);
 
-        // 6. Ajouter la liquidité officielle
+        // D'abord, approuver le contrat de trading pour récupérer les tokens
+        psgToken.approve(address(tradingContract), liquidityAmount);
+        rmaToken.approve(address(tradingContract), liquidityAmount);
+        barToken.approve(address(tradingContract), liquidityAmount);
+        cityToken.approve(address(tradingContract), liquidityAmount);
+        juvToken.approve(address(tradingContract), liquidityAmount);
+        bayToken.approve(address(tradingContract), liquidityAmount);
+
+        // 6. Ajouter la liquidité officielle (qui fera le transferFrom)
         tradingContract.addLiquidity(address(psgToken), liquidityAmount);
         tradingContract.addLiquidity(address(rmaToken), liquidityAmount);
         tradingContract.addLiquidity(address(barToken), liquidityAmount);
