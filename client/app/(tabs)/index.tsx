@@ -14,6 +14,8 @@ import { useAccount, useChainId } from "wagmi";
 import { ThemedText } from "@/components/ThemedText";
 import { ThemedView } from "@/components/ThemedView";
 import { config } from "@/config/env";
+import AnimatedTitle from "@/components/AnimatedTitle";
+
 
 const { width } = Dimensions.get("window");
 
@@ -183,7 +185,7 @@ export default function HomeScreen() {
                 <ThemedText style={styles.logoText}>⚽</ThemedText>
               </ThemedView>
 
-              <ThemedText style={styles.title}>Takumi</ThemedText>
+            <AnimatedTitle />
 
               <ThemedText style={styles.tagline}>
                 Trade Football Fan Tokens on Chiliz Blockchain
