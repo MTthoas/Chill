@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "start": "expo start",
+    "start:tunnel": "expo start --tunnel",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo start --android",
     "ios": "expo start --ios",
@@ -12,6 +13,7 @@
     "typechain": "typechain --target ethers-v6 --out-dir contracts/types 'contracts/abi/**/*.json'"
   },
   "dependencies": {
+    "@expo/ngrok": "^4.1.0",
     "@expo/vector-icons": "^14.1.0",
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-native-community/netinfo": "11.4.1",
@@ -24,6 +26,7 @@
     "ajv": "^8.17.1",
     "ajv-keywords": "^5.1.0",
     "dotenv": "^17.0.1",
+    "ethers": "^6.15.0",
     "expo": "~53.0.17",
     "expo-application": "~6.1.5",
     "expo-blur": "~14.1.5",

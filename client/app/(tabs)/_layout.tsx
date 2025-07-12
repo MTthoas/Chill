@@ -49,11 +49,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="news"
+        name="Dashboard"
         options={{
-          title: "News",
+          title: "Dashboard",
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="newspaper.fill" color={color} />
+            <IconSymbol size={28} name="star.fill" color={color} />
           ),
         }}
       />
@@ -75,14 +75,40 @@ export default function TabLayout() {
         options={{
           title: "Fan Tokens",
           tabBarIcon: ({ color }) => (
-            <IconSymbol
-              size={28}
-              name="trophy.fill"
-              color={color}
-            />
+            <IconSymbol size={28} name="trophy.fill" color={color} />
           ),
         }}
       />
+      {/* Onglet League */}
+      <Tabs.Screen
+        name="League"
+        options={{
+          title: "League",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="list.bullet.rectangle" color={color} />
+          ),
+        }}
+      />
+      {/* Onglet News */}
+      <Tabs.Screen
+        name="news"
+        options={{
+          title: "news",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="newspaper.fill" color={color} />
+          ),
+        }}
+      />
+      {/* Onglet Team supprimé ici */}
+      {/* <Tabs.Screen
+        name="Team"
+        options={{
+          title: "Team",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={28} name="person.3.fill" color={color} />
+          ),
+        }}
+      /> */}
     </Tabs>
   );
 }

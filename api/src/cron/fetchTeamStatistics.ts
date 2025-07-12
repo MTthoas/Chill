@@ -210,7 +210,7 @@ async function generateCompetitorAdvices() {
         // Appel à l'API ChatGPT avec prompt adapté selon la disponibilité du prochain match
         let prompt;
         if (nextMatchInfo && nextMatch) {
-          // Récupérer les stats de l'adversaire direct
+          // Prompt en anglais, format strict, consigne ultra-visible
           const isHome = nextMatch.homeCompetitorId === competitor.id;
           const opponent = isHome
             ? nextMatch.away_competitor
@@ -229,21 +229,20 @@ async function generateCompetitorAdvices() {
                 .map((stat) => `${stat.type}: ${stat.value}`)
                 .join(", ");
             } else {
-              opponentStatsText = "Non disponible";
+              opponentStatsText = "Not available";
             }
           } else {
-            opponentStatsText = "Non disponible";
+            opponentStatsText = "Not available";
           }
-          prompt = `Tu es un expert et pronostiqueur sportif professionnel. Voici les statistiques détaillées de ${
+          prompt = `You are a professional sports analyst. Here are the stats for ${
             competitor.name
-          } : ${statsText}.
-Le prochain match est contre ${
-            opponent?.name || "inconnu"
-          } dont les statistiques sont : ${opponentStatsText}.
-Analyse la dynamique récente, les points forts/faibles, le contexte du match (enjeux, forme, absences potentielles si connues), et compare objectivement les deux équipes. Utilise les chiffres pour appuyer ton analyse, évite absolument toute généralité ou formule vague. Prends une position tranchée et différenciée : chaque avis doit être unique, personnalisé et ne pas ressembler à celui d'une autre équipe, même si les dynamiques sont proches. Donne une prédiction réaliste et argumentée (même négative ou mitigée), et termine toujours par un ordre d'investissement OBLIGATOIRE pour ce club : "buy" ou "sell", justifié de façon précise par la comparaison et la dynamique. N'utilise jamais deux fois la même tournure ou structure d'avis pour deux équipes différentes.
-Format strict : "Perf : [analyse comparative chiffrée et argumentée, unique et personnalisée]. Prochain : [prédiction]. Order : [buy/sell]". L'ordre doit toujours être présent, sans exception.`;
+          }: ${statsText}.\nNext match: vs ${
+            opponent?.name || "unknown"
+          } (stats: ${opponentStatsText}).\nCompare both teams, analyze strengths, weaknesses, and context. Conclude with a clear investment order for ${
+            competitor.name
+          }:\nOrder: [buy/sell]\nOnly answer with the analysis and finish with 'Order: buy' or 'Order: sell' on a separate line. No other text after the order.`;
         } else {
-          prompt = `Tu es un expert et pronostiqueur sportif professionnel. Fais une analyse détaillée, honnête, nuancée et critique (max 100 mots) des statistiques de ${competitor.name} en ${season.name}, en insistant sur les points faibles, la dynamique récente (5 derniers matchs), et le bilan global de la saison. Utilise les chiffres pour appuyer ton analyse, évite les généralités. L'avis peut être négatif ou mitigé selon la réalité des performances. Termine toujours par un ordre d'investissement OBLIGATOIRE pour ce club : "buy" (acheter) ou "sell" (vendre), selon la dynamique réelle et le contexte, et justifie ce choix de façon précise.\nFormat strict : "Bilan : [analyse chiffrée et argumentée]. Order : [buy/sell]". L'ordre doit toujours être présent, sans exception.`;
+          prompt = `You are a professional sports analyst. Here are the stats for ${competitor.name} in ${season.name}: ${statsText}.\nAnalyze the team's recent form, strengths, weaknesses, and season context. Conclude with a clear investment order for ${competitor.name}:\nOrder: [buy/sell]\nOnly answer with the analysis and finish with 'Order: buy' or 'Order: sell' on a separate line. No other text after the order.`;
         }
 
         const chatGptResponse = await fetch(
@@ -262,7 +261,7 @@ Format strict : "Perf : [analyse comparative chiffrée et argumentée, unique et
                   content: prompt,
                 },
               ],
-              max_tokens: 80,
+              max_tokens: 360,
               temperature: 0.7,
             }),
           }
@@ -281,28 +280,46 @@ Format strict : "Perf : [analyse comparative chiffrée et argumentée, unique et
           "Analyse non disponible";
         // Extraction de l'ordre (buy/sell) depuis la réponse
         let order = "";
+        // Recherche stricte (Order: ...)
         const orderMatch = rawContent.match(/order\s*:\s*(buy|sell)/i);
         if (orderMatch) {
           order = orderMatch[1].toLowerCase();
         } else {
-          // fallback naïf : si pas trouvé, on tente de deviner
-          if (/buy/i.test(rawContent)) order = "buy";
+          // Recherche plus large (présence de buy/sell seul sur une ligne)
+          const lines = rawContent.split(/\r?\n/);
+          const lastLine = lines[lines.length - 1].trim().toLowerCase();
+          if (lastLine === "buy") order = "buy";
+          else if (lastLine === "sell") order = "sell";
+          else if (/buy/i.test(rawContent)) order = "buy";
           else if (/sell/i.test(rawContent)) order = "sell";
-          else order = "";
+          else {
+            // fallback explicite : si pas trouvé, on log la réponse brute et on force 'sell'
+            console.warn(
+              `Aucun order détecté dans l'avis IA pour ${competitor.name} (special_id: ${competitor.special_id}), réponse brute : ${rawContent} -- fallback sur 'sell'`
+            );
+            order = "sell";
+          }
         }
         // Nettoyage de l'avis (on retire la mention Order si présente)
         const advice = rawContent.replace(/Order\s*:\s*(buy|sell)/i, "").trim();
 
-        // Sauvegarder l'avis en base
-        await prisma.competitorStatsAdvice.create({
-          data: {
-            competitorId: competitor.id,
-            advice: advice,
-            order: order,
-          },
-        });
-
-        console.log(`Avis généré pour ${competitor.name}: ${advice}`);
+        // Sauvegarder l'avis en base uniquement si order est bien présent
+        if (order === "buy" || order === "sell") {
+          await prisma.competitorStatsAdvice.create({
+            data: {
+              competitorId: competitor.id, // id numérique pour la clé étrangère
+              advice: advice,
+              order: order,
+            },
+          });
+          console.log(
+            `Avis généré pour ${competitor.name} (special_id: ${competitor.special_id}): ${advice} [order: ${order}]`
+          );
+        } else {
+          console.warn(
+            `Aucun order valide pour ${competitor.name}, avis non sauvegardé.`
+          );
+        }
 
         // Pause pour éviter le rate limit OpenAI
         await new Promise((resolve) => setTimeout(resolve, 1000));
