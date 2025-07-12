@@ -210,22 +210,40 @@ async function generateCompetitorAdvices() {
         // Appel à l'API ChatGPT avec prompt adapté selon la disponibilité du prochain match
         let prompt;
         if (nextMatchInfo && nextMatch) {
-          // Ajout d'un prompt expertisé et d'un ordre obligatoire
+          // Récupérer les stats de l'adversaire direct
           const isHome = nextMatch.homeCompetitorId === competitor.id;
           const opponent = isHome
             ? nextMatch.away_competitor
             : nextMatch.home_competitor;
-          prompt = `Tu es un expert et pronostiqueur sportif professionnel. Fais une analyse détaillée et argumentée (max 80 mots) des statistiques de ${
+          let opponentStatsText = "";
+          if (opponent) {
+            const opponentFull = season.competitors.find(
+              (c) => c.id === opponent.id
+            );
+            if (
+              opponentFull &&
+              opponentFull.statistics &&
+              opponentFull.statistics.length > 0
+            ) {
+              opponentStatsText = opponentFull.statistics
+                .map((stat) => `${stat.type}: ${stat.value}`)
+                .join(", ");
+            } else {
+              opponentStatsText = "Non disponible";
+            }
+          } else {
+            opponentStatsText = "Non disponible";
+          }
+          prompt = `Tu es un expert et pronostiqueur sportif professionnel. Voici les statistiques détaillées de ${
             competitor.name
-          } en ${
-            season.name
-          }, en te concentrant sur les points forts/faibles, la dynamique récente, et les enjeux du prochain match contre ${
+          } : ${statsText}.
+Le prochain match est contre ${
             opponent?.name || "inconnu"
-          } le ${new Date(
-            nextMatch.start_time
-          ).toLocaleDateString()}. Compare les deux équipes, anticipe les clés du match, et donne une prédiction réaliste. Termine toujours par un ordre d'investissement OBLIGATOIRE pour ce club : "buy" (acheter) ou "sell" (vendre), selon la dynamique et le contexte.\nFormat strict : "Perf : [analyse poussée]. Prochain : [prédiction]. Order : [buy/sell]". L'ordre doit toujours être présent, sans exception.`;
+          } dont les statistiques sont : ${opponentStatsText}.
+Analyse la dynamique récente, les points forts/faibles, le contexte du match (enjeux, forme, absences potentielles si connues), et compare objectivement les deux équipes. Utilise les chiffres pour appuyer ton analyse, évite absolument toute généralité ou formule vague. Prends une position tranchée et différenciée : chaque avis doit être unique, personnalisé et ne pas ressembler à celui d'une autre équipe, même si les dynamiques sont proches. Donne une prédiction réaliste et argumentée (même négative ou mitigée), et termine toujours par un ordre d'investissement OBLIGATOIRE pour ce club : "buy" ou "sell", justifié de façon précise par la comparaison et la dynamique. N'utilise jamais deux fois la même tournure ou structure d'avis pour deux équipes différentes.
+Format strict : "Perf : [analyse comparative chiffrée et argumentée, unique et personnalisée]. Prochain : [prédiction]. Order : [buy/sell]". L'ordre doit toujours être présent, sans exception.`;
         } else {
-          prompt = `Tu es un expert et pronostiqueur sportif professionnel. Fais une analyse détaillée et argumentée (max 80 mots) des statistiques de ${competitor.name} en ${season.name}, en te concentrant sur les points forts/faibles, la dynamique récente, et le bilan global de la saison. Termine toujours par un ordre d'investissement OBLIGATOIRE pour ce club : "buy" (acheter) ou "sell" (vendre), selon la dynamique et le contexte.\nFormat strict : "Bilan : [analyse poussée]. Order : [buy/sell]". L'ordre doit toujours être présent, sans exception.`;
+          prompt = `Tu es un expert et pronostiqueur sportif professionnel. Fais une analyse détaillée, honnête, nuancée et critique (max 100 mots) des statistiques de ${competitor.name} en ${season.name}, en insistant sur les points faibles, la dynamique récente (5 derniers matchs), et le bilan global de la saison. Utilise les chiffres pour appuyer ton analyse, évite les généralités. L'avis peut être négatif ou mitigé selon la réalité des performances. Termine toujours par un ordre d'investissement OBLIGATOIRE pour ce club : "buy" (acheter) ou "sell" (vendre), selon la dynamique réelle et le contexte, et justifie ce choix de façon précise.\nFormat strict : "Bilan : [analyse chiffrée et argumentée]. Order : [buy/sell]". L'ordre doit toujours être présent, sans exception.`;
         }
 
         const chatGptResponse = await fetch(
