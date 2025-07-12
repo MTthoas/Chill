@@ -40,7 +40,7 @@ export default function ChilizDashboard() {
           onPress={() => setActiveTab('portfolio')}
         >
           <Text style={[styles.tabText, activeTab === 'portfolio' && styles.activeTabText]}>
-            Portfolio
+            💼 Portfolio
           </Text>
         </TouchableOpacity>
         
@@ -49,7 +49,7 @@ export default function ChilizDashboard() {
           onPress={() => setActiveTab('trading')}
         >
           <Text style={[styles.tabText, activeTab === 'trading' && styles.activeTabText]}>
-            Trading
+            🚀 Trading
           </Text>
         </TouchableOpacity>
       </View>
@@ -65,13 +65,13 @@ export default function ChilizDashboard() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#0A0A0A',
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#FFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   tab: {
     flex: 1,
@@ -82,15 +82,15 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   activeTab: {
-    borderBottomColor: '#0066CC',
+    borderBottomColor: '#6366F1',
   },
   tabText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#666',
+    color: 'rgba(255, 255, 255, 0.6)',
   },
   activeTabText: {
-    color: '#0066CC',
+    color: '#6366F1',
   },
   content: {
     flex: 1,

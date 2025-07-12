@@ -207,10 +207,8 @@ export default function HomeScreen() {
           }
         >
           <ThemedView style={styles.dashboardHeader}>
-            <ThemedText style={styles.welcomeTitle}>
-              Welcome to Takumi ⚽
-            </ThemedText>
-
+            <AnimatedTitle />
+            
             <ThemedView style={styles.walletSection}>
               <ThemedText style={styles.walletLabel}>Your Wallet</ThemedText>
               <ThemedText style={styles.chainIndicator}>
