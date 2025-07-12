@@ -55,14 +55,6 @@ const getChainName = (chainId: number): string => {
       return "Chiliz Mainnet";
     case 88882:
       return "Chiliz Testnet";
-    case 11155111:
-      return "Sepolia Testnet";
-    case 84532:
-      return "Base Sepolia";
-    case 80002:
-      return "Polygon Amoy";
-    case 747:
-      return "Flow Mainnet";
     default:
       return `Chain ${chainId}`;
   }
@@ -74,14 +66,6 @@ const getChainEndpoint = (chainId: number): string | null => {
     case 88888: // Chiliz Mainnet
     case 88882: // Chiliz Testnet
       return "chiliz";
-    case 11155111: // Sepolia
-      return "ethereum";
-    case 8453: // Base Sepolia
-      return "base";
-    case 80002: // Polygon Amoy
-      return "polygon";
-    case 747: // Flow Mainnet
-      return "flow";
     default:
       return null;
   }

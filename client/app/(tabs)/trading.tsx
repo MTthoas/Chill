@@ -54,14 +54,9 @@ interface WalletApiResponse {
 
 const getChainEndpoint = (chainId: number): string | null => {
   switch (chainId) {
-    case 11155111: // Sepolia
-      return "ethereum";
-    case 8453: // Base Sepolia
-      return "base";
-    case 80002: // Polygon Amoy
-      return "polygon";
-    case 747: // Flow Mainnet
-      return "flow";
+    case 8888:
+    case 8882:
+      return "chiliz";
     default:
       return null;
   }

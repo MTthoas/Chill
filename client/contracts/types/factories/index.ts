@@ -4,8 +4,3 @@
 export { ChilizFanTokenTrading__factory } from "./ChilizFanTokenTrading__factory";
 export { ERC20__factory } from "./ERC20__factory";
 export { FanToken__factory } from "./FanToken__factory";
-export { ICCIPRouter__factory } from "./ICCIPRouter__factory";
-export { IntentFi__factory } from "./IntentFi__factory";
-export { IntentFiAdvanced__factory } from "./IntentFiAdvanced__factory";
-export { IntentFiCCIP__factory } from "./IntentFiCCIP__factory";
-export { IntentFiGovernance__factory } from "./IntentFiGovernance__factory";

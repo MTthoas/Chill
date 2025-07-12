@@ -10,7 +10,7 @@ import "react-native-reanimated";
 
 import "@walletconnect/react-native-compat";
 import { WagmiProvider } from "wagmi";
-import { mainnet, polygon, arbitrum, sepolia, base } from "@wagmi/core/chains";
+import { mainnet, chiliz } from "@wagmi/core/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   createAppKit,
@@ -19,6 +19,7 @@ import {
 } from "@reown/appkit-wagmi-react-native";
 
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { defineChain } from "viem/utils";
 
 // 0. Setup queryClient
 const queryClient = new QueryClient();
@@ -27,23 +28,28 @@ const queryClient = new QueryClient();
 const projectId = "b6457b6ecb37f3252ed24919f9c34843";
 
 // Définition manuelle de Flow Mainnet
-const flowMainnet = {
-  id: 747,
-  name: "Flow Mainnet",
+export const chiliz_spicy_testnet = defineChain({
+  id: 88_882,
+  name: 'Chiliz Spicy Testnet',
+  network: 'chiliz-spicy-testnet',
   nativeCurrency: {
     decimals: 18,
-    name: "Flow",
-    symbol: "FLOW",
+    name: 'CHZ',
+    symbol: 'CHZ',
   },
   rpcUrls: {
     default: {
-      http: ["https://mainnet.evm.nodes.onflow.org"],
+      http: ['https://spicy-rpc.chiliz.com'],
     },
   },
   blockExplorers: {
-    default: { name: "Flow Explorer", url: "https://evm.flowscan.org" },
+    default: {
+      name: 'Chiliz Explorer',
+      url: 'https://testnet.chiliscan.com',
+      apiUrl: 'https://testnet.chiliscan.com/api',
+    },
   },
-} as const;
+})
 
 // 2. Create config
 const metadata = {
@@ -57,7 +63,7 @@ const metadata = {
   },
 };
 
-const chains = [sepolia, base, polygon, flowMainnet] as const;
+const chains = [chiliz, chiliz_spicy_testnet] as const;
 
 const wagmiConfig = defaultWagmiConfig({ chains, projectId, metadata });
 

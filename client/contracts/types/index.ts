@@ -4,17 +4,7 @@
 export type { ChilizFanTokenTrading } from "./ChilizFanTokenTrading";
 export type { ERC20 } from "./ERC20";
 export type { FanToken } from "./FanToken";
-export type { ICCIPRouter } from "./ICCIPRouter";
-export type { IntentFi } from "./IntentFi";
-export type { IntentFiAdvanced } from "./IntentFiAdvanced";
-export type { IntentFiCCIP } from "./IntentFiCCIP";
-export type { IntentFiGovernance } from "./IntentFiGovernance";
 export * as factories from "./factories";
 export { ChilizFanTokenTrading__factory } from "./factories/ChilizFanTokenTrading__factory";
 export { ERC20__factory } from "./factories/ERC20__factory";
 export { FanToken__factory } from "./factories/FanToken__factory";
-export { ICCIPRouter__factory } from "./factories/ICCIPRouter__factory";
-export { IntentFi__factory } from "./factories/IntentFi__factory";
-export { IntentFiAdvanced__factory } from "./factories/IntentFiAdvanced__factory";
-export { IntentFiCCIP__factory } from "./factories/IntentFiCCIP__factory";
-export { IntentFiGovernance__factory } from "./factories/IntentFiGovernance__factory";
