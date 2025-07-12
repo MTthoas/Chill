@@ -30,6 +30,7 @@ model Competitor {
   gender       String
   country      String?
   country_code String?
+  logo         String?      // URL du logo de l'équipe
   season       Season       @relation(fields: [seasonId], references: [id])
   seasonId     Int
   players      Player[]
