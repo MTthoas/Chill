@@ -1,10 +1,12 @@
 import { PrismaClient } from "@prisma/client";
 import express from "express";
+import cors from "cors";
 
 const app = express();
 const prisma = new PrismaClient();
 
 app.use(express.json());
+app.use(cors());
 
 // Helper function to fetch season info from SportRadar API
 async function fetchSeasonInfo(seasonId: string) {
@@ -178,6 +180,7 @@ app.post("/seasons", async (req, res) => {
 
 // CRUD Competitor
 app.get("/competitors", async (req, res) => {
+  console.log("Fetching competitors with filters:", req.query);
   try {
     const {
       id,
@@ -199,25 +202,22 @@ app.get("/competitors", async (req, res) => {
 
     // Build the where clause dynamically
     const where: any = {};
-    if (id) where.id = parseInt(id as string);
-    if (special_id) where.special_id = special_id as string;
-    if (name) where.name = { contains: name as string, mode: "insensitive" };
+    if (id) where.id = Number(id);
+    if (special_id) where.special_id = String(special_id);
+    if (name) where.name = { contains: String(name), mode: "insensitive" };
     if (short_name)
-      where.short_name = {
-        contains: short_name as string,
-        mode: "insensitive",
-      };
-    if (abbreviation) where.abbreviation = abbreviation as string;
-    if (gender) where.gender = gender as string;
+      where.short_name = { contains: String(short_name), mode: "insensitive" };
+    if (abbreviation) where.abbreviation = String(abbreviation);
+    if (gender) where.gender = String(gender);
     if (country)
-      where.country = { contains: country as string, mode: "insensitive" };
-    if (country_code) where.country_code = country_code as string;
-    if (season_id) where.seasonId = parseInt(season_id as string);
+      where.country = { contains: String(country), mode: "insensitive" };
+    if (country_code) where.country_code = String(country_code);
+    if (season_id) where.seasonId = Number(season_id);
     if (season_special_id) {
-      where.season = {
-        special_id: season_special_id as string,
-      };
+      where.season = { special_id: String(season_special_id) };
     }
+
+    console.log(req.query);
 
     // Build the include clause dynamically
     const include: any = {};
@@ -237,8 +237,8 @@ app.get("/competitors", async (req, res) => {
 
     // Build pagination
     const pagination: any = {};
-    if (limit) pagination.take = parseInt(limit as string);
-    if (offset) pagination.skip = parseInt(offset as string);
+    if (limit) pagination.take = Number(limit);
+    if (offset) pagination.skip = Number(offset);
 
     const competitors = await prisma.competitor.findMany({
       where,
@@ -1024,9 +1024,10 @@ app.get(
     try {
       // On récupère toutes les statistiques du competitor pour la saison donnée
       const competitor = await prisma.competitor.findUnique({
-        where: { special_id: competitorId },
+        where: { id: Number(competitorId) },
         include: {
           statistics: true,
+          competitorStatsAdvices: true,
           season: true,
           players: {
             include: {
@@ -1053,6 +1054,7 @@ app.get(
           name: competitor.name,
           season: competitor.season,
           statistics: competitor.statistics,
+          competitorStatsAdvices: competitor.competitorStatsAdvices,
           players: competitor.players.map((player) => ({
             id: player.id,
             name: player.name,
@@ -1382,7 +1384,4 @@ app.post("/seasons/:seasonId/upcoming-matches", async (req, res) => {
   }
 });
 
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`API démarrée sur http://localhost:${port}`);
-});
+export default app;

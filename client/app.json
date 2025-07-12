@@ -11,6 +11,11 @@
     "ios": {
       "supportsTablet": true
     },
+    "extra": {
+      "networkSecurity": {
+        "allowPlaintextRequests": true
+      }
+    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
