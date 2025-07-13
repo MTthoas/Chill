@@ -95,45 +95,84 @@ export default function Dashboard() {
         {/* Leagues List */}
         <View style={styles.okxContent}>
           {competitions.length > 0 ? (
-            competitions.map((item, index) => (
-              <TouchableOpacity
-                key={item.id?.toString() || item.name || index}
-                style={styles.okxLeagueCard}
-                activeOpacity={0.8}
-                onPress={() =>
-                  router.push({
-                    pathname: "/dashboard/League",
-                    params: {
-                      id: item.id,
-                      name: item.name,
-                      special_id: item.special_id,
-                    },
-                  })
-                }
-              >
-                <View style={styles.okxLeagueLeft}>
-                  <View style={styles.okxLeagueIcon}>
-                    <Text style={styles.okxLeagueEmoji}>🏆</Text>
+            competitions.map((item, index) => {
+              const leagueType =
+                typeof item.name === "string" &&
+                item.name.toLowerCase().includes("women")
+                  ? "Women"
+                  : "Men";
+              return (
+                <TouchableOpacity
+                  key={item.id?.toString() || item.name || index}
+                  style={styles.okxLeagueCard}
+                  activeOpacity={0.8}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/dashboard/League",
+                      params: {
+                        id: item.id,
+                        name: item.name,
+                        special_id: item.special_id,
+                      },
+                    })
+                  }
+                >
+                  <View style={styles.okxLeagueLeft}>
+                    <View style={styles.okxLeagueIcon}>
+                      <Text style={styles.okxLeagueEmoji}>🏆</Text>
+                    </View>
+                    <View style={styles.okxLeagueInfo}>
+                      <Text style={styles.okxLeagueName} numberOfLines={1}>
+                        {item.name}
+                      </Text>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          marginTop: 2,
+                        }}
+                      >
+                        <View
+                          style={{
+                            backgroundColor:
+                              leagueType === "Women" ? "#E75480" : "#1E90FF",
+                            borderRadius: 6,
+                            paddingHorizontal: 8,
+                            paddingVertical: 2,
+                            marginRight: 8,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              color: "#fff",
+                              fontWeight: "bold",
+                              fontSize: 11,
+                              letterSpacing: 1,
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {leagueType}
+                          </Text>
+                        </View>
+                        <Text style={styles.okxLeagueStatus}>
+                          Active Season
+                        </Text>
+                      </View>
+                    </View>
                   </View>
-                  <View style={styles.okxLeagueInfo}>
-                    <Text style={styles.okxLeagueName} numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                    <Text style={styles.okxLeagueStatus}>Active Season</Text>
-                  </View>
-                </View>
 
-                <View style={styles.okxLeagueRight}>
-                  <View style={styles.okxLeagueBadge}>
-                    <Text style={styles.okxLeagueBadgeText}>LIVE</Text>
+                  <View style={styles.okxLeagueRight}>
+                    <View style={styles.okxLeagueBadge}>
+                      <Text style={styles.okxLeagueBadgeText}>LIVE</Text>
+                    </View>
                   </View>
-                </View>
 
-                <View style={styles.okxLeagueArrow}>
-                  <Text style={styles.okxArrowIcon}>›</Text>
-                </View>
-              </TouchableOpacity>
-            ))
+                  <View style={styles.okxLeagueArrow}>
+                    <Text style={styles.okxArrowIcon}>›</Text>
+                  </View>
+                </TouchableOpacity>
+              );
+            })
           ) : (
             <View style={styles.okxEmptyState}>
               <Text style={styles.okxEmptyIcon}>📭</Text>
