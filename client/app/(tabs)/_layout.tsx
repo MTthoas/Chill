@@ -71,7 +71,7 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="trading_new"
+        name="fan_tokens"
         options={{
           title: "Fan Tokens",
           tabBarIcon: ({ color }) => (

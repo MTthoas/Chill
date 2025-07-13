@@ -44,7 +44,7 @@ export function useFanTokenBalances() {
           try {
             const contract = new Contract(contractAddress, ERC20_ABI, provider);
             const [symbol, name, decimals, balance] = await Promise.all([
-              contract.symbol(),
+              contract.symbol(),   
               contract.name(),
               contract.decimals(),
               contract.balanceOf(address),

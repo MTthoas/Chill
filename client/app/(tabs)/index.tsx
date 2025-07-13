@@ -1,27 +1,21 @@
-import { AppKitButton, useAppKit } from "@reown/appkit-wagmi-react-native";
-import { useCallback, useState, useEffect, useRef } from "react";
+import { AppKitButton } from "@reown/appkit-wagmi-react-native";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
+  Image,
   RefreshControl,
   SafeAreaView,
   ScrollView,
   StyleSheet,
+  Text,
   TouchableOpacity,
-  Image,
-  Animated,
   View,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
 import { useAccount, useBalance, useChainId } from "wagmi";
 
-import AnimatedTitle from "@/components/AnimatedTitle";
-import { ThemedText } from "@/components/ThemedText";
-import { ThemedView } from "@/components/ThemedView";
-import { useOnChainTokenBalances } from "@/hooks/useOnChainTokenBalances";
-import { Text } from "react-native";
 import { useFanTokenBalances } from "@/hooks/useFanTokenBalance";
+import { useOnChainTokenBalances } from "@/hooks/useOnChainTokenBalances";
 
 const { width, height } = Dimensions.get("window");
 
@@ -42,85 +36,6 @@ const getChainName = (chainId: number): string => {
     default:
       return `Chain ${chainId}`;
   }
-};
-
-// Configuration des équipes fan tokens avec gradients style Betclic/OKX
-const FAN_TEAMS = [
-  {
-    name: "Paris Saint-Germain",
-    symbol: "PSG",
-    color: "#FFD700",
-    gradient: ["#FFD700", "#FFA500"],
-    logo: "https://upload.wikimedia.org/wikipedia/fr/thumb/8/86/Paris_Saint-Germain_Logo.svg/1200px-Paris_Saint-Germain_Logo.svg.png",
-  },
-  {
-    name: "FC Barcelona",
-    symbol: "BAR",
-    color: "#1E90FF",
-    gradient: ["#1E90FF", "#00BFFF"],
-    logo: "https://upload.wikimedia.org/wikipedia/fr/thumb/a/a1/Logo_FC_Barcelona.svg/1200px-Logo_FC_Barcelona.svg.png",
-  },
-  {
-    name: "Manchester City",
-    symbol: "CITY",
-    color: "#32CD32",
-    gradient: ["#32CD32", "#00FF00"],
-    logo: "https://upload.wikimedia.org/wikipedia/fr/thumb/b/b9/Logo_Manchester_United.svg/2021px-Logo_Manchester_United.svg.png",
-  },
-  {
-    name: "Juventus",
-    symbol: "JUV",
-    color: "#FF4500",
-    gradient: ["#FF4500", "#FF6347"],
-    logo: "https://upload.wikimedia.org/wikipedia/fr/thumb/9/9f/Logo_Juventus.svg/2088px-Logo_Juventus.svg.png",
-  },
-  {
-    name: "FC Bayern Munich",
-    symbol: "BAY",
-    color: "#FF1493",
-    gradient: ["#FF1493", "#FF69B4"],
-    logo: "https://1000logos.net/wp-content/uploads/2018/05/Bayern-Munchen-Logo.png",
-  },
-];
-
-// Floating animation component
-const FloatingCard = ({
-  children,
-  delay = 0,
-}: {
-  children: React.ReactNode;
-  delay?: number;
-}) => {
-  const animatedValue = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(animatedValue, {
-          toValue: 1,
-          duration: 3000,
-          delay,
-          useNativeDriver: true,
-        }),
-        Animated.timing(animatedValue, {
-          toValue: 0,
-          duration: 3000,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-  }, []);
-
-  const translateY = animatedValue.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, -10],
-  });
-
-  return (
-    <Animated.View style={{ transform: [{ translateY }] }}>
-      {children}
-    </Animated.View>
-  );
 };
 
 // Hook pour récupérer les prix en temps réel (CoinGecko)
@@ -155,21 +70,21 @@ function useTokenPrices(symbols: string[]) {
         }
         setPrices(result);
       } catch (e) {
+        console.error("[TokenPrices] Error fetching prices:", e);
         setPrices({});
       }
     }
     fetchPrices();
-  }, [symbols.join(",")]);
+  });
   return prices;
 }
 
 export default function HomeScreen() {
-  const { open } = useAppKit();
-  const { isConnected, address } = useAccount();
+  const { address } = useAccount();
   const chainId = useChainId();
 
   // Use on-chain token balances instead of backend API
-  const { tokens, loading, error, refetch } = useOnChainTokenBalances();
+  const { tokens, refetch } = useOnChainTokenBalances();
 
   const { tokens: fanTokens, loading: fanTokensLoading } =
     useFanTokenBalances();
@@ -188,7 +103,6 @@ export default function HomeScreen() {
   console.log("Chiliz Balance:", chzBalance);
   const [refreshing, setRefreshing] = useState(false);
   const [hideSmallBalances, setHideSmallBalances] = useState(false);
-  const scrollY = useRef(new Animated.Value(0)).current;
 
   const allSymbols = ["CHZ", ...fanTokens.map((t) => t.symbol)];
   const prices = useTokenPrices(allSymbols);
@@ -206,204 +120,9 @@ export default function HomeScreen() {
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refetch();
+    await refetchChz();
     setRefreshing(false);
-  }, [refetch]);
-
-  // Parallax effect for header image
-  const headerTranslateY = scrollY.interpolate({
-    inputRange: [0, 300],
-    outputRange: [0, -100],
-    extrapolate: "clamp",
-  });
-
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [0, 300],
-    outputRange: [1, 0.3],
-    extrapolate: "clamp",
-  });
-
-  const handleScroll = Animated.event(
-    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-    { useNativeDriver: true }
-  );
-
-  if (!isConnected) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <ScrollView>
-          {/* Hero Section with Stadium Image */}
-          <Animated.View
-            style={[
-              styles.heroSection,
-              {
-                transform: [{ translateY: headerTranslateY }],
-                opacity: headerOpacity,
-              },
-            ]}
-          >
-            <Image
-              source={{
-                uri: "https://www.shutterstock.com/shutterstock/videos/3605469933/thumb/1.jpg?ip=x480",
-              }}
-              style={styles.heroImage}
-              resizeMode="cover"
-            />
-            <LinearGradient
-              colors={["transparent", "rgba(10, 10, 10, 0.8)", "#0a0a0a"]}
-              style={styles.heroGradient}
-            />
-
-            <ThemedView style={styles.heroContent}>
-              <AnimatedTitle />
-
-              <ThemedText style={styles.tagline}>
-                🔥 Trade Football Fan Tokens Like a Pro 🚀
-              </ThemedText>
-
-              <TouchableOpacity
-                style={styles.connectButton}
-                onPress={() => open()}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={["#FFD700", "#FF4500"]}
-                  style={styles.buttonGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                >
-                  <ThemedText style={styles.connectButtonText}>
-                    🎯 CONNECT & WIN BIG 💰
-                  </ThemedText>
-                </LinearGradient>
-              </TouchableOpacity>
-            </ThemedView>
-          </Animated.View>
-
-          {/* Why Choose Takumi? section style Betclic/OKX */}
-          <ThemedView style={styles.featuresSection}>
-            <ThemedText style={styles.sectionTitle}>
-              💎 Why Takumi Dominates? 💎
-            </ThemedText>
-            <View style={styles.featuresGrid}>
-              {[
-                {
-                  icon: "⚽",
-                  title: "Official Tokens",
-                  desc: "Licensed club tokens",
-                  color: "#FFD700",
-                },
-                {
-                  icon: "📈",
-                  title: "Live Trading",
-                  desc: "Real-time markets",
-                  color: "#32CD32",
-                },
-                {
-                  icon: "🏆",
-                  title: "Top Clubs",
-                  desc: "Elite teams only",
-                  color: "#FF4500",
-                },
-                {
-                  icon: "🔒",
-                  title: "Ultra Secure",
-                  desc: "Blockchain verified",
-                  color: "#1E90FF",
-                },
-              ].map((feature, idx) => (
-                <View
-                  key={idx}
-                  style={[styles.featureCard, { borderColor: feature.color }]}
-                >
-                  <Text style={[styles.featureIcon, { color: feature.color }]}>
-                    {feature.icon}
-                  </Text>
-                  <Text style={styles.featureTitle}>{feature.title}</Text>
-                  <Text style={styles.featureDesc}>{feature.desc}</Text>
-                </View>
-              ))}
-            </View>
-          </ThemedView>
-
-          {/* Teams Section with Beautiful Cards */}
-          <ThemedView style={styles.teamsSection}>
-            <ThemedText style={styles.sectionTitle}>
-              🔥 HOT Fan Tokens 🔥
-            </ThemedText>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.teamsScrollContainer}
-            >
-              {FAN_TEAMS.map((team, index) => (
-                <FloatingCard key={index} delay={index * 100}>
-                  <TouchableOpacity
-                    activeOpacity={0.9}
-                    style={styles.teamCardWrapper}
-                  >
-                    <LinearGradient
-                      colors={team.gradient}
-                      style={[styles.teamCard, styles.teamCardGradient]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 1 }}
-                    >
-                      <View style={styles.teamCardContent}>
-                        <Image
-                          source={{ uri: team.logo }}
-                          style={{
-                            width: 48,
-                            height: 48,
-                            marginBottom: 12,
-                            borderRadius: 24,
-                          }}
-                          resizeMode="contain"
-                        />
-                        <ThemedText style={styles.teamSymbol}>
-                          {team.symbol}
-                        </ThemedText>
-                        <ThemedText style={styles.teamName}>
-                          {team.name}
-                        </ThemedText>
-                      </View>
-                      <View style={styles.teamCardShine} />
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </FloatingCard>
-              ))}
-            </ScrollView>
-          </ThemedView>
-
-          {/* CTA Section */}
-          <ThemedView style={styles.ctaSection}>
-            <BlurView intensity={30} style={styles.ctaCard}>
-              <ThemedText style={styles.ctaTitle}>
-                🚀 Ready to DOMINATE? 🚀
-              </ThemedText>
-              <ThemedText style={styles.ctaDescription}>
-                Connect your wallet and start winning with official football fan
-                tokens!
-              </ThemedText>
-              <TouchableOpacity
-                style={styles.secondaryButton}
-                onPress={() => open()}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={["#FFD700", "#FF4500"]}
-                  style={styles.ctaButtonGradient}
-                >
-                  <ThemedText style={styles.secondaryButtonText}>
-                    💎 START WINNING NOW 💎
-                  </ThemedText>
-                </LinearGradient>
-              </TouchableOpacity>
-            </BlurView>
-          </ThemedView>
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
+  }, [refetch, refetchChz]);
 
   // Dashboard OKX-style betclicable
   return (
