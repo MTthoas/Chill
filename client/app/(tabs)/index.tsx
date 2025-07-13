@@ -518,7 +518,7 @@ export default function HomeScreen() {
                       <View style={styles.okxTokenIcon}>
                         <Image
                           source={{
-                            uri: "https://cryptologos.cc/logos/chiliz-chz-logo.png?v=026",
+                            uri: "https://s3.coinmarketcap.com/static-gravity/image/63c1513a40a6426a8a2f6ea63ce0a234.png",
                           }}
                           style={{
                             width: 28,
@@ -614,7 +614,7 @@ function getFanTokenLogo(symbol: string) {
     case "PSG":
       return "https://upload.wikimedia.org/wikipedia/fr/thumb/8/86/Paris_Saint-Germain_Logo.svg/1200px-Paris_Saint-Germain_Logo.svg.png";
     case "CITY":
-      return "https://upload.wikimedia.org/wikipedia/fr/thumb/e/eb/Logo_Manchester_City_2016.svg/1200px-Logo_Manchester_City_2016.svg.png";
+      return "https://upload.wikimedia.org/wikipedia/fr/thumb/b/ba/Logo_Manchester_City_2016.svg/langfr-250px-Logo_Manchester_City_2016.svg.png";
     // Ajoute d'autres logos si besoin
     default:
       return "https://cdn-icons-png.flaticon.com/512/197/197564.png";
