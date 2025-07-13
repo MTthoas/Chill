@@ -11,8 +11,11 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
+  TextInput,
+  Alert,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { useSeasonStaking } from "../../hooks/useSeasonStaking";
 
 const { width, height } = Dimensions.get("window");
 
@@ -24,6 +27,17 @@ export default function League() {
   const [teamsMap, setTeamsMap] = useState<Map<string, any>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [stakeAmount, setStakeAmount] = useState("");
+
+  // Hook pour le staking
+  const {
+    stakingInfo,
+    loading: stakingLoading,
+    error: stakingError,
+    stake,
+    claim,
+    withdraw,
+  } = useSeasonStaking();
 
   useEffect(() => {
     async function fetchData() {
@@ -214,6 +228,178 @@ export default function League() {
             )}
           </View>
         </View>
+
+        {/* Section Staking PSG Fan Token */}
+        {String(id) === "523" && (
+          <View style={styles.stakingSection}>
+            <View style={styles.stakingHeader}>
+              <Text style={styles.stakingTitle}>🎯 PSG Fan Token Pool</Text>
+              <Text style={styles.stakingSubtitle}>
+                Stake PSG • Earn CHILL Rewards
+              </Text>
+            </View>
+
+            {/* Informations de la pool */}
+            <View style={styles.poolInfoCard}>
+              <View style={styles.poolInfoRow}>
+                <View style={styles.poolInfoItem}>
+                  <Text style={styles.poolInfoLabel}>Mon solde PSG</Text>
+                  <Text style={styles.poolInfoValue}>
+                    {parseFloat(stakingInfo.fanTokenBalance).toFixed(2)} PSG
+                  </Text>
+                </View>
+                <View style={styles.poolInfoItem}>
+                  <Text style={styles.poolInfoLabel}>Staké</Text>
+                  <Text style={styles.poolInfoValue}>
+                    {parseFloat(stakingInfo.stakedAmount).toFixed(2)} PSG
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.poolInfoRow}>
+                <View style={styles.poolInfoItem}>
+                  <Text style={styles.poolInfoLabel}>Récompenses</Text>
+                  <Text style={styles.poolInfoValue}>
+                    {parseFloat(stakingInfo.pendingRewards).toFixed(2)} CHILL
+                  </Text>
+                </View>
+                <View style={styles.poolInfoItem}>
+                  <Text style={styles.poolInfoLabel}>Fin de pool</Text>
+                  <Text style={styles.poolInfoValue}>
+                    {stakingInfo.seasonEndTimestamp > 0
+                      ? new Date(
+                          stakingInfo.seasonEndTimestamp * 1000
+                        ).toLocaleDateString("fr-FR", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : "N/A"}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Statut de la pool */}
+              <View style={styles.poolStatusContainer}>
+                <View
+                  style={[
+                    styles.poolStatusBadge,
+                    {
+                      backgroundColor: stakingInfo.poolClosed
+                        ? "#ef4444"
+                        : "#10b981",
+                    },
+                  ]}
+                >
+                  <Text style={styles.poolStatusText}>
+                    {stakingInfo.poolClosed ? "Pool fermée" : "Pool active"}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {/* Actions de staking */}
+            {!stakingInfo.poolClosed && (
+              <View style={styles.stakingActions}>
+                <View style={styles.stakeInputContainer}>
+                  <TextInput
+                    style={styles.stakeInput}
+                    placeholder="Montant à staker..."
+                    placeholderTextColor="#9ca3af"
+                    value={stakeAmount}
+                    onChangeText={setStakeAmount}
+                    keyboardType="numeric"
+                  />
+                  <TouchableOpacity
+                    style={[styles.actionButton, styles.stakeButton]}
+                    onPress={async () => {
+                      if (!stakeAmount || parseFloat(stakeAmount) <= 0) {
+                        Alert.alert(
+                          "Erreur",
+                          "Veuillez entrer un montant valide"
+                        );
+                        return;
+                      }
+
+                      const success = await stake(stakeAmount);
+                      if (success) {
+                        setStakeAmount("");
+                        Alert.alert("Succès", "Tokens stakés avec succès !");
+                      } else {
+                        Alert.alert(
+                          "Erreur",
+                          stakingError || "Échec du staking"
+                        );
+                      }
+                    }}
+                    disabled={stakingLoading}
+                  >
+                    <Text style={styles.actionButtonText}>
+                      {stakingLoading ? "Staking..." : "Staker"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Actions pour pool fermée */}
+            {stakingInfo.poolClosed && (
+              <View style={styles.closedPoolActions}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.claimButton]}
+                  onPress={async () => {
+                    const success = await claim();
+                    if (success) {
+                      Alert.alert("Succès", "Récompenses récupérées !");
+                    } else {
+                      Alert.alert(
+                        "Erreur",
+                        stakingError || "Échec de la récupération"
+                      );
+                    }
+                  }}
+                  disabled={
+                    stakingLoading ||
+                    parseFloat(stakingInfo.pendingRewards) === 0
+                  }
+                >
+                  <Text style={styles.actionButtonText}>
+                    {stakingLoading
+                      ? "Récupération..."
+                      : "Récupérer récompenses"}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.withdrawButton]}
+                  onPress={async () => {
+                    const success = await withdraw();
+                    if (success) {
+                      Alert.alert("Succès", "Tokens retirés avec succès !");
+                    } else {
+                      Alert.alert("Erreur", stakingError || "Échec du retrait");
+                    }
+                  }}
+                  disabled={
+                    stakingLoading || parseFloat(stakingInfo.stakedAmount) === 0
+                  }
+                >
+                  <Text style={styles.actionButtonText}>
+                    {stakingLoading ? "Retrait..." : "Retirer tokens"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Erreur de staking */}
+            {stakingError && (
+              <View style={styles.errorContainer}>
+                <Text style={styles.errorText}>{stakingError}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Teams Rankings */}
         <View style={styles.okxTeamsSection}>
           <View style={styles.okxTeamsHeader}>
@@ -700,5 +886,137 @@ const styles = StyleSheet.create({
   okxArrowIcon: {
     color: "#6366f1",
     fontSize: 18,
+  },
+  stakingSection: {
+    marginHorizontal: 16,
+    marginVertical: 24,
+    backgroundColor: "#23262f",
+    borderRadius: 18,
+    padding: 20,
+    borderWidth: 1.5,
+    borderColor: "#363a45",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.13,
+    shadowRadius: 12,
+  },
+  stakingHeader: {
+    marginBottom: 16,
+  },
+  stakingTitle: {
+    color: "#fff",
+    fontSize: 20,
+    fontWeight: "bold",
+    marginBottom: 4,
+  },
+  stakingSubtitle: {
+    color: "#6366f1",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  poolInfoCard: {
+    backgroundColor: "#23262f",
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#2c2f36",
+  },
+  poolInfoRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  poolInfoItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  poolInfoLabel: {
+    color: "#aaa",
+    fontSize: 14,
+    fontWeight: "500",
+    marginBottom: 4,
+  },
+  poolInfoValue: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  poolStatusContainer: {
+    alignItems: "center",
+    marginTop: 8,
+  },
+  poolStatusBadge: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+  },
+  poolStatusText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "bold",
+  },
+  stakingActions: {
+    marginTop: 12,
+  },
+  stakeInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#191b22",
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: "#2c2f36",
+  },
+  stakeInput: {
+    flex: 1,
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "500",
+  },
+  actionButton: {
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
+  },
+  stakeButton: {
+    backgroundColor: "#10b981",
+    borderWidth: 1,
+    borderColor: "#10b981",
+  },
+  claimButton: {
+    backgroundColor: "#6366f1",
+    borderWidth: 1,
+    borderColor: "#6366f1",
+  },
+  withdrawButton: {
+    backgroundColor: "#ef4444",
+    borderWidth: 1,
+    borderColor: "#ef4444",
+  },
+  actionButtonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  closedPoolActions: {
+    marginTop: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  errorContainer: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: "#ef4444",
+  },
+  errorText: {
+    color: "#fff",
+    fontWeight: "500",
+    textAlign: "center",
   },
 });
