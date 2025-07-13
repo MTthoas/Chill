@@ -38,32 +38,27 @@ const FAN_TOKEN_ADDRESSES = [
   {
     symbol: "PSG",
     name: "Paris Saint-Germain Fan Token",
-    address: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0" as `0x${string}`,
+    address: "0xc2661815C69c2B3924D3dd0c2C1358A1E38A3105" as `0x${string}`,
   },
   {
     symbol: "RMA",
     name: "Real Madrid Fan Token",
-    address: "0x0165878A594ca255338adfa4d48449f69242Eb8F" as `0x${string}`,
+    address: "0x6401b29F40a02578Ae44241560625232A01B3F79" as `0x${string}`,
   },
   {
     symbol: "BAR",
     name: "FC Barcelona Fan Token",
-    address: "0x610178dA211FEF7D417bC0e6FeD39F05609AD788" as `0x${string}`,
+    address: "0xFD3C73b3B09D418841dd6Aff341b2d6e3abA433b" as `0x${string}`,
   },
   {
     symbol: "CITY",
     name: "Manchester City Fan Token",
-    address: "0x9A676e781A523b5d0C0e43731313A708CB607508" as `0x${string}`,
-  },
-  {
-    symbol: "JUV",
-    name: "Juventus Fan Token",
-    address: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed" as `0x${string}`,
+    address: "0xF9C0F80a6c67b1B39bdDF00ecD57f2533ef5b688" as `0x${string}`,
   },
   {
     symbol: "BAY",
     name: "Bayern Munich Fan Token",
-    address: "0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1" as `0x${string}`,
+    address: "0x1d4343d35f0E0e14C14115876D01dEAa4792550b" as `0x${string}`,
   },
 ] as const;
 

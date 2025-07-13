@@ -8,7 +8,6 @@ export const CHILIZ_CONTRACTS = {
       // Exemples de fan tokens - à remplir avec les vraies adresses
       PSG: "",
       BAR: "",
-      JUV: "",
       ACM: "",
     },
   },
@@ -33,7 +32,6 @@ export const CHILIZ_CONTRACTS = {
       RMA: "0x0165878A594ca255338adfa4d48449f69242Eb8F",
       BAR: "0x610178dA211FEF7D417bC0e6FeD39F05609AD788",
       CITY: "0x9A676e781A523b5d0C0e43731313A708CB607508",
-      JUV: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
       BAY: "0x4ed7c70F96B99c776995fB64377f0d4aB3B0e1C1",
     },
   },
@@ -79,16 +77,6 @@ export const TEAM_METADATA = {
     colors: {
       primary: "#6CABDD",
       secondary: "#1C2C5B",
-    },
-  },
-  JUV: {
-    name: "Juventus",
-    league: "Serie A",
-    country: "Italy",
-    logo: "https://assets.socios.com/club-logos/juv-logo.png",
-    colors: {
-      primary: "#000000",
-      secondary: "#FFFFFF",
     },
   },
   BAY: {

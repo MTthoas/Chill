@@ -1,5 +1,5 @@
 import { AppKitButton } from "@reown/appkit-wagmi-react-native";
-import { useCallback, useEffect, useState, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -14,11 +14,12 @@ import {
   View,
 } from "react-native";
 import { useAccount, useBalance, useChainId } from "wagmi";
+import { useTokenPrices } from "../../hooks/useTokenPrices";
 
+import { ThemedText } from "@/components/ThemedText";
+import { ThemedView } from "@/components/ThemedView";
 import { useFanTokenBalances } from "@/hooks/useFanTokenBalance";
 import { useOnChainTokenBalances } from "@/hooks/useOnChainTokenBalances";
-import { ThemedView } from "@/components/ThemedView";
-import { ThemedText } from "@/components/ThemedText";
 
 const { width, height } = Dimensions.get("window");
 
@@ -41,47 +42,6 @@ const getChainName = (chainId: number): string => {
   }
 };
 
-// Hook pour récupérer les prix en temps réel (CoinGecko)
-function useTokenPrices(symbols: string[], refreshKey?: any) {
-  const [prices, setPrices] = useState<{ [symbol: string]: number }>({});
-  useEffect(() => {
-    if (!symbols.length) return;
-    async function fetchPrices() {
-      try {
-        // Mapping symbol -> id CoinGecko (à compléter selon les tokens supportés)
-        const coingeckoIds: { [symbol: string]: string } = {
-          CHZ: "chiliz",
-          PSG: "paris-saint-germain-fan-token",
-          CITY: "manchester-city-fan-token",
-          // Ajoute d'autres tokens ici si besoin
-        };
-        const ids = symbols
-          .map((s) => coingeckoIds[s])
-          .filter(Boolean)
-          .join(",");
-        if (!ids) return;
-        const res = await fetch(
-          `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`
-        );
-        const data = await res.json();
-        const result: { [symbol: string]: number } = {};
-        for (const symbol of symbols) {
-          const id = coingeckoIds[symbol];
-          if (id && data[id] && data[id].usd) {
-            result[symbol] = data[id].usd;
-          }
-        }
-        setPrices(result);
-      } catch (e) {
-        console.error("[TokenPrices] Error fetching prices:", e);
-        setPrices({});
-      }
-    }
-    fetchPrices();
-  }, [symbols, refreshKey]);
-  return prices;
-}
-
 export default function HomeScreen() {
   const { address } = useAccount();
   const chainId = useChainId();
@@ -92,8 +52,6 @@ export default function HomeScreen() {
   const { tokens: fanTokens, loading: fanTokensLoading } =
     useFanTokenBalances();
 
-  console.log("Fan Tokens:", fanTokens);
-
   const {
     data: chzBalance,
     isLoading: chzLoading,
@@ -103,7 +61,6 @@ export default function HomeScreen() {
     chainId, // 88888 pour Chiliz Mainnet
   });
 
-  console.log("Chiliz Balance:", chzBalance);
   const [refreshing, setRefreshing] = useState(false);
   const [hideSmallBalances, setHideSmallBalances] = useState(false);
 
@@ -123,7 +80,7 @@ export default function HomeScreen() {
     );
 
   // Fonction de refresh
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refetch();
@@ -338,7 +295,12 @@ export default function HomeScreen() {
                       <Text style={styles.okxTokenBalance}>
                         {Number(chzBalance.formatted).toFixed(4)}
                       </Text>
-                      <Text style={styles.okxTokenAddress}>Native</Text>
+                      <Text style={styles.okxTokenValue}>
+                        $
+                        {(
+                          Number(chzBalance.formatted) * (prices["CHZ"] || 0)
+                        ).toFixed(2)}
+                      </Text>
                     </View>
                     <View style={styles.okxTokenArrow}>
                       <Text style={styles.okxArrowIcon}>›</Text>
@@ -377,10 +339,13 @@ export default function HomeScreen() {
                       </View>
                       <View style={styles.okxTokenRight}>
                         <Text style={styles.okxTokenBalance}>
-                          {Number(token.readableBalance)}
+                          {Number(token.readableBalance).toFixed(4)}
                         </Text>
-                        <Text style={styles.okxTokenAddress}>
-                          {token.contractAddress.slice(0, 8)}...
+                        <Text style={styles.okxTokenValue}>
+                          $
+                          {(
+                            Number(token.readableBalance)
+                          ).toFixed(2)}
                         </Text>
                       </View>
                       <View style={styles.okxTokenArrow}>
@@ -1082,6 +1047,11 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: "#888888",
     fontFamily: "monospace",
+  },
+  okxTokenValue: {
+    fontSize: 12,
+    color: "#22C55E",
+    fontWeight: "600",
   },
   okxTokenArrow: {
     width: 20,

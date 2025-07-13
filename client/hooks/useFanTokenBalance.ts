@@ -1,4 +1,4 @@
-import { Contract } from "ethers";
+import { Contract, getAddress } from "ethers";
 import { JsonRpcProvider } from "ethers/providers";
 import { formatUnits } from "ethers/utils";
 import { useEffect, useState } from "react";
@@ -23,13 +23,11 @@ export const FAN_TOKEN_ADDRESSES = [
   // Manchester City
   "0x6401b29F40a02578Ae44241560625232A01B3F79",
   // FC Barcelona
-  "0x24f11f21767103D32827113eEd50B1F5FBE15151",
-  // Juventus
-  "0x3506424f91fd33084466f402d5d97f05f8e3b4af",
-  // AC Milan
-  "0x76CF23f1E7413E6e35dA70F136afA0Ad3b1A6d16",
-  // Arsenal
-  "0x0eb8D8c9D49d20B8b60c0AA51B9cCcF8C4BD08B7",
+  "0xFD3C73b3B09D418841dd6Aff341b2d6e3abA433b",
+  // AC Milan - Fixed checksum
+  "0xF9C0F80a6c67b1B39bdDF00ecD57f2533ef5b688",
+  // Arsenal - Fixed checksum
+  "0x1d4343d35f0E0e14C14115876D01dEAa4792550b",
   // Real Madrid (upcoming)
   // "0x...", // Add when available
 ];
@@ -56,19 +54,24 @@ export function useFanTokenBalances() {
       const results = await Promise.all(
         FAN_TOKEN_ADDRESSES.map(async (contractAddress) => {
           try {
-            const contract = new Contract(contractAddress, ERC20_ABI, provider);
+            await new Promise((resolve) => setTimeout(resolve, 2000));
+
+            const checksummedAddress = getAddress(contractAddress);
+            const contract = new Contract(
+              checksummedAddress,
+              ERC20_ABI,
+              provider
+            );
+
             const [symbol, name, decimals, balance] = await Promise.all([
               contract.symbol(),
               contract.name(),
               contract.decimals(),
               contract.balanceOf(address),
             ]);
-            console.log(
-              `[FanToken] ${symbol} (${contractAddress}) balance:`,
-              balance.toString()
-            );
+
             return {
-              contractAddress,
+              contractAddress: checksummedAddress,
               symbol,
               name,
               decimals,
@@ -111,12 +114,6 @@ export function getTokenMetadata(address: string) {
       name: "FC Barcelona",
       emoji: "🇪🇸",
       logo: "https://assets.socios.com/club-logos/bar-logo.png",
-    },
-    "0x3506424f91fd33084466f402d5d97f05f8e3b4af": {
-      symbol: "JUV",
-      name: "Juventus",
-      emoji: "🇮🇹",
-      logo: "https://assets.socios.com/club-logos/juv-logo.png",
     },
     "0x76CF23f1E7413E6e35dA70F136afA0Ad3b1A6d16": {
       symbol: "ACM",
