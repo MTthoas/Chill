@@ -17,7 +17,6 @@ const { width } = Dimensions.get("window");
 
 export default function Dashboard() {
   const [competitions, setCompetitions] = useState<any[]>([]);
-  const [seasonId, setSeasonId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
@@ -43,15 +42,17 @@ export default function Dashboard() {
           ? data
           : data.data || data.seasons || [];
 
-        const filteredSeasons = seasonsArray.find(
-          (season: any) => season.special_id == 126393
+        // Filtrer et aplatir le tableau des saisons
+        const filteredSeasons = seasonsArray.filter(
+          (season: any) =>
+            season.special_id == 126393 || season.special_id == 127105
         );
-
-        setSeasonId(filteredSeasons?.special_id || null);
-        // Wrap in array for FlatList compatibility
-        const filteredSeasonsArr = filteredSeasons ? [filteredSeasons] : [];
-
-        setCompetitions(filteredSeasonsArr);
+        // Si le backend renvoie un tableau imbriqué, on aplatit
+        const flatSeasons = Array.isArray(filteredSeasons[0])
+          ? filteredSeasons.flat()
+          : filteredSeasons;
+        console.log("Filtered seasons (flat):", flatSeasons);
+        setCompetitions(flatSeasons);
       })
       .catch((err) => {
         console.error("Fetch error details:", err);
@@ -105,7 +106,7 @@ export default function Dashboard() {
                     params: {
                       id: item.id,
                       name: item.name,
-                      special_id: seasonId,
+                      special_id: item.special_id,
                     },
                   })
                 }
@@ -121,13 +122,13 @@ export default function Dashboard() {
                     <Text style={styles.okxLeagueStatus}>Active Season</Text>
                   </View>
                 </View>
-                
+
                 <View style={styles.okxLeagueRight}>
                   <View style={styles.okxLeagueBadge}>
                     <Text style={styles.okxLeagueBadgeText}>LIVE</Text>
                   </View>
                 </View>
-                
+
                 <View style={styles.okxLeagueArrow}>
                   <Text style={styles.okxArrowIcon}>›</Text>
                 </View>

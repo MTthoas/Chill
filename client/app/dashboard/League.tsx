@@ -16,15 +16,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 const { width, height } = Dimensions.get("window");
 
-// Mock data et emojis OKX-style
-const LEAGUE_STATS = [
-  { icon: "⚽", value: "248", label: "Goals", trend: "+12" },
-  { icon: "👥", value: "5", label: "Teams", trend: "Active" },
-  { icon: "📅", value: "32", label: "Matches", trend: "+4" },
-  { icon: "🟢", value: "Live", label: "Status", trend: "ON" },
-];
-const TEAM_EMOJIS = ["🇫🇷", "🇪🇸", "🏴", "🇩🇪", "🇪🇸"];
-
 export default function League() {
   const { id, name, special_id } = useLocalSearchParams();
   const router = useRouter();
