@@ -8,7 +8,13 @@ async function fetchAndSaveStatisticsForAllCompetitors() {
   });
 
   for (const season of seasons) {
+    console.log(
+      `Traitement de la saison ${season.name} (${season.special_id}) avec ${season.competitors.length} équipes...`
+    );
     for (const competitor of season.competitors) {
+      console.log(
+        `Traitement de l'équipe ${competitor.name} (${competitor.special_id})...`
+      );
       try {
         // Vérifie si on a déjà des stats pour ce competitor dans cette saison aujourd'hui
         const existingStats = await prisma.statistique.findFirst({

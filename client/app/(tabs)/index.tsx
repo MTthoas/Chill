@@ -1,9 +1,10 @@
 import { AppKitButton } from "@reown/appkit-wagmi-react-native";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useMemo } from "react";
 import {
   ActivityIndicator,
   Dimensions,
   Image,
+  Linking,
   RefreshControl,
   SafeAreaView,
   ScrollView,
@@ -16,6 +17,8 @@ import { useAccount, useBalance, useChainId } from "wagmi";
 
 import { useFanTokenBalances } from "@/hooks/useFanTokenBalance";
 import { useOnChainTokenBalances } from "@/hooks/useOnChainTokenBalances";
+import { ThemedView } from "@/components/ThemedView";
+import { ThemedText } from "@/components/ThemedText";
 
 const { width, height } = Dimensions.get("window");
 
@@ -39,7 +42,7 @@ const getChainName = (chainId: number): string => {
 };
 
 // Hook pour récupérer les prix en temps réel (CoinGecko)
-function useTokenPrices(symbols: string[]) {
+function useTokenPrices(symbols: string[], refreshKey?: any) {
   const [prices, setPrices] = useState<{ [symbol: string]: number }>({});
   useEffect(() => {
     if (!symbols.length) return;
@@ -75,7 +78,7 @@ function useTokenPrices(symbols: string[]) {
       }
     }
     fetchPrices();
-  });
+  }, [symbols, refreshKey]);
   return prices;
 }
 
@@ -104,8 +107,11 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [hideSmallBalances, setHideSmallBalances] = useState(false);
 
-  const allSymbols = ["CHZ", ...fanTokens.map((t) => t.symbol)];
-  const prices = useTokenPrices(allSymbols);
+  const allSymbols = useMemo(
+    () => ["CHZ", ...fanTokens.map((t) => t.symbol)],
+    [fanTokens, refreshing]
+  );
+  const prices = useTokenPrices(allSymbols, refreshing);
 
   // Calcul dynamique de la valeur totale du portfolio en $
   const totalValue =
@@ -117,12 +123,46 @@ export default function HomeScreen() {
     );
 
   // Fonction de refresh
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refetch();
     await refetchChz();
     setRefreshing(false);
-  }, [refetch, refetchChz]);
+  }, []); // Correction : tableau vide pour éviter le hot reload infini
+
+  // Quick stats dynamiques depuis l'API
+  const [quickStats, setQuickStats] = useState({
+    topClubs: 0,
+    status: "-",
+    statusTrend: "-",
+  });
+  const [quickStatsLoading, setQuickStatsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchQuickStats() {
+      try {
+        // Récupère le nombre de clubs via /competitors (utilise count)
+        const resClubs = await fetch(
+          "https://chillguys.vercel.app/competitors"
+        );
+        if (!resClubs.ok) throw new Error("Erreur API clubs");
+        const clubs = await resClubs.json();
+        setQuickStats((prev) => ({
+          ...prev,
+          topClubs: clubs && typeof clubs.count === "number" ? clubs.count : 0,
+        }));
+      } catch (e) {
+        setQuickStats((prev) => ({ ...prev, topClubs: 0 }));
+      } finally {
+        setQuickStatsLoading(false);
+      }
+    }
+    fetchQuickStats();
+  }, []);
+
+  // Calcul dynamique du nombre de tokens (fan tokens + CHZ natif)
+  const nbTokens = fanTokens.length + (chzBalance ? 1 : 0);
 
   // Dashboard OKX-style betclicable
   return (
@@ -167,43 +207,85 @@ export default function HomeScreen() {
               ${formatLargeNumber(Number(totalValue.toFixed(2)))}
             </Text>
             <Text style={styles.okxBalanceSubtext}>
-              {tokens.length} Fan Tokens • Live Market
+              {fanTokens.length + (chzBalance ? 1 : 0)} Token
+              {fanTokens.length + (chzBalance ? 1 : 0) !== 1 ? "s" : ""} • Live
+              Market
             </Text>
           </View>
 
           {/* OKX-style Quick Stats */}
+          <ThemedView style={styles.agentsGrid}>
+            {/* Chat Agent Card - Full Width */}
+            <TouchableOpacity
+              style={styles.chatAgentCard}
+              onPress={() => {
+                const chatUrl =
+                  "https://agentverse.ai/agents/details/agent1qwlxt7alynn08f63r9qca9ahxee26k46w88wrr3q8v08znwmd5yq6ute7e9/profile";
+                Linking.openURL(chatUrl).catch((err) =>
+                  console.error("Failed to open chat URL:", err)
+                );
+              }}
+            >
+              <ThemedView style={styles.chatAgentHeader}>
+                <ThemedText style={styles.chatAgentTitle}>
+                  💬 Chat Agent
+                </ThemedText>
+                <ThemedView
+                  style={[
+                    styles.chatAgentStatus,
+                    { backgroundColor: "#4ade80" },
+                  ]}
+                />
+              </ThemedView>
+              <ThemedText style={styles.chatAgentDescription}>
+                Chat with our intelligent IntentFi Agent
+              </ThemedText>
+              <ThemedText style={styles.chatAgentLink}>
+                🔗 Open a chat →
+              </ThemedText>
+            </TouchableOpacity>
+          </ThemedView>
+
           <View style={styles.okxQuickStats}>
-            {[
-              {
-                icon: "💰",
-                value: `$${formatLargeNumber(Number(totalValue.toFixed(2)))}`,
-                label: "Portfolio",
-                trend: "+12.5%",
-              },
-              {
-                icon: "⚽",
-                value: tokens.length.toString(),
-                label: "Tokens",
-                trend: "+2",
-              },
-              { icon: "🏆", value: "6", label: "Top Clubs", trend: "New" },
-              { icon: "📈", value: "Live", label: "Status", trend: "Active" },
-            ].map((stat, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.okxStatCard}
-                activeOpacity={0.8}
-              >
-                <View style={styles.okxStatIcon}>
-                  <Text style={styles.okxStatEmoji}>{stat.icon}</Text>
-                </View>
-                <Text style={styles.okxStatValue}>{stat.value}</Text>
-                <Text style={styles.okxStatLabel}>{stat.label}</Text>
-                <View style={styles.okxStatTrend}>
-                  <Text style={styles.okxStatTrendText}>{stat.trend}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
+            {quickStatsLoading ? (
+              <ActivityIndicator size="small" color="#F7931A" />
+            ) : (
+              [
+                {
+                  icon: "💰",
+                  value: `$${formatLargeNumber(Number(totalValue.toFixed(2)))}`,
+                  label: "Portfolio",
+                  trend: "+12.5%",
+                },
+                {
+                  icon: "⚽",
+                  value: nbTokens.toString(),
+                  label: "Tokens",
+                  trend: `+${fanTokens.length}`,
+                },
+                {
+                  icon: "🏆",
+                  value: quickStats.topClubs.toString(),
+                  label: "Teams",
+                  trend: "+10",
+                },
+              ].map((stat, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={styles.okxStatCard}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.okxStatIcon}>
+                    <Text style={styles.okxStatEmoji}>{stat.icon}</Text>
+                  </View>
+                  <Text style={styles.okxStatValue}>{stat.value}</Text>
+                  <Text style={styles.okxStatLabel}>{stat.label}</Text>
+                  <View style={styles.okxStatTrend}>
+                    <Text style={styles.okxStatTrendText}>{stat.trend}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))
+            )}
           </View>
 
           {/* OKX-style Tokens List */}
@@ -585,6 +667,48 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "rgba(255, 255, 255, 0.2)",
   },
+  agentsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    gap: 12,
+    backgroundColor: "rgba(0, 0, 0, 0)",
+  },
+  chatAgentCard: {
+    width: "100%", // Prend toute la largeur
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 6,
+    borderWidth: 1,
+    borderColor: "rgba(139, 92, 246, 0.3)", // Bordure violette
+    backgroundColor: "rgba(139, 92, 246, 0.1)", // Fond violet clair
+  },
+  chatAgentHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+    backgroundColor: "rgba(0, 0, 0, 0)",
+  },
+  chatAgentTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#fff",
+    backgroundColor: "rgba(0, 0, 0, 0)",
+  },
+  chatAgentDescription: {
+    fontSize: 14,
+    color: "rgba(255, 255, 255, 0.8)",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  chatAgentLink: {
+    fontSize: 16,
+    color: "#8b5cf6", // Couleur violette
+    fontWeight: "600",
+    textAlign: "center",
+  },
   ctaTitle: {
     fontSize: 24,
     fontWeight: "bold",
@@ -789,6 +913,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#000000",
     paddingHorizontal: 16,
     paddingTop: 20,
+    paddingBottom: 48,
   },
   okxTokensHeader: {
     flexDirection: "row",
