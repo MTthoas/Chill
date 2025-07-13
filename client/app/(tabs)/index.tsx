@@ -295,7 +295,7 @@ export default function HomeScreen() {
                       </View>
                       <View style={styles.okxTokenRight}>
                         <Text style={styles.okxTokenBalance}>
-                          {Number(token.readableBalance).toFixed(4)}
+                          {Number(token.readableBalance)}
                         </Text>
                         <Text style={styles.okxTokenAddress}>
                           {token.contractAddress.slice(0, 8)}...
