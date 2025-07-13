@@ -79,36 +79,7 @@ export default function TabLayout() {
           ),
         }}
       />
-      {/* Onglet League */}
-      <Tabs.Screen
-        name="League"
-        options={{
-          title: "League",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="list.bullet.rectangle" color={color} />
-          ),
-        }}
-      />
-      {/* Onglet News */}
-      <Tabs.Screen
-        name="news"
-        options={{
-          title: "news",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="newspaper.fill" color={color} />
-          ),
-        }}
-      />
-      {/* Onglet Team supprimé ici */}
-      {/* <Tabs.Screen
-        name="Team"
-        options={{
-          title: "Team",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="person.3.fill" color={color} />
-          ),
-        }}
-      /> */}
+      {/* Onglet League et Team supprimés définitivement du TabBar */}
     </Tabs>
   );
 }

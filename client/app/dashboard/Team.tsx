@@ -14,6 +14,24 @@ const { width } = Dimensions.get("window");
 
 const API_URL = "https://chillguys.vercel.app"; // Mets ici l'URL publique ou ton IP locale
 
+// Mapping emojis pour les stats
+const statEmojis: { [key: string]: string } = {
+  goals_scored: "⚽️",
+  goals_conceded: "🥅",
+  matches_played: "📅",
+  yellow_cards: "🟨",
+  red_cards: "🟥",
+  assists: "🎯",
+  shots_on_target: "🎯",
+  shots_off_target: "🚀",
+  average_ball_possession: "🕰️",
+  corner_kicks: "🚩",
+  free_kicks: "🦶",
+  offsides: "🚦",
+  shots_total: "🔫",
+  shots_blocked: "🛡️",
+};
+
 export default function Team() {
   const params = useLocalSearchParams();
   const [stats, setStats] = useState<any>(null);
@@ -26,7 +44,6 @@ export default function Team() {
       setLoading(true);
       setError(null);
       try {
-        console.log("Fetching stats for:", params.id, params.seasonId);
         const res = await fetch(
           `${API_URL}/competitors/${params.id}/seasons/${params.seasonId}/statistics`
         );
@@ -45,7 +62,7 @@ export default function Team() {
   if (!params.id || !params.seasonId) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>
+        <Text style={styles.okxTitle}>
           Sélectionnez une équipe depuis la ligue
         </Text>
       </View>
@@ -53,14 +70,17 @@ export default function Team() {
   }
 
   if (loading) return <ActivityIndicator style={{ flex: 1 }} color="#6366f1" />;
-  if (error) return <Text style={styles.error}>test {error}</Text>;
+  if (error) return <Text style={styles.error}>{error}</Text>;
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header Section */}
-      <View style={styles.header}>
-        <Text style={styles.title}>{params.name}</Text>
-        <Text style={styles.subtitle}>
+      {/* Header Section OKX-style */}
+      <View style={styles.okxHeader}>
+        <Text style={styles.okxTitle}>
+          {params.emoji ? params.emoji + " " : ""}
+          {params.name}
+        </Text>
+        <Text style={styles.okxSubtitle}>
           {params.short_name} ({params.abbreviation})
         </Text>
         <View style={styles.idContainer}>
@@ -103,16 +123,21 @@ export default function Team() {
           </View>
         )}
 
-      {/* Statistics Grid */}
+      {/* Statistics Grid OKX-style */}
       {stats &&
         Array.isArray(stats.statistics) &&
         stats.statistics.length > 0 && (
-          <View style={styles.statsContainer}>
-            <Text style={styles.sectionTitle}>📊 Statistiques de l'équipe</Text>
+          <View style={styles.okxStatsContainer}>
+            <Text style={styles.sectionTitle}>
+              📊 Statistiques de l&apos;équipe
+            </Text>
             <View style={styles.statsGrid}>
               {stats.statistics.map((stat: any) => (
                 <View key={stat.id} style={styles.statCard}>
-                  <Text style={styles.statValue}>{stat.value}</Text>
+                  <Text style={styles.statValue}>
+                    {statEmojis[stat.type] ? statEmojis[stat.type] + " " : ""}
+                    {stat.value}
+                  </Text>
                   <Text style={styles.statLabel}>
                     {formatStatType(stat.type)}
                   </Text>
@@ -122,7 +147,7 @@ export default function Team() {
           </View>
         )}
 
-      {/* Players Section */}
+      {/* Players Section OKX-style */}
       {stats && Array.isArray(stats.players) && stats.players.length > 0 && (
         <View style={styles.playersContainer}>
           <Text style={styles.sectionTitle}>⚽ Statistiques des joueurs</Text>
@@ -132,11 +157,19 @@ export default function Team() {
             )
             .map((player: any) => (
               <View key={player.id} style={styles.playerCard}>
-                <Text style={styles.playerName}>{player.name}</Text>
+                <Text style={styles.playerName}>
+                  {player.emoji ? player.emoji + " " : ""}
+                  {player.name}
+                </Text>
                 <View style={styles.playerStatsGrid}>
                   {player.statistics.slice(0, 6).map((stat: any) => (
                     <View key={stat.id} style={styles.playerStatItem}>
-                      <Text style={styles.playerStatValue}>{stat.value}</Text>
+                      <Text style={styles.playerStatValue}>
+                        {statEmojis[stat.type]
+                          ? statEmojis[stat.type] + " "
+                          : ""}
+                        {stat.value}
+                      </Text>
                       <Text style={styles.playerStatLabel}>
                         {formatStatType(stat.type)}
                       </Text>
@@ -190,38 +223,40 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#0f1419",
   },
-  header: {
-    backgroundColor: "#1a1f2e",
+  // OKX-style header
+  okxHeader: {
+    backgroundColor: "#161622",
+    paddingVertical: 32,
     paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 24,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#2a2f3e",
+    alignItems: "center",
+    marginBottom: 12,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 8,
   },
-  title: {
-    fontSize: 32,
+  okxTitle: {
+    fontSize: 30,
     fontWeight: "900",
     color: "#fff",
+    textAlign: "center",
     marginBottom: 4,
-    textAlign: "center",
   },
-  subtitle: {
-    fontSize: 18,
-    color: "#6366f1",
+  okxSubtitle: {
+    fontSize: 16,
+    color: "#a78bfa",
     textAlign: "center",
-    marginBottom: 16,
+    marginBottom: 12,
     fontWeight: "600",
   },
   idContainer: {
     flexDirection: "row",
     justifyContent: "center",
     gap: 12,
+    marginTop: 8,
   },
   idBadge: {
     backgroundColor: "#2a2f3e",
@@ -230,13 +265,13 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     borderColor: "#6366f1",
+    marginHorizontal: 4,
   },
   idText: {
     color: "#6366f1",
     fontSize: 12,
     fontWeight: "600",
   },
-
   // AI Section
   aiSection: {
     backgroundColor: "#1a1f2e",
@@ -291,11 +326,20 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     fontWeight: "400",
   },
-
-  // Statistics Grid
-  statsContainer: {
+  // Statistics Grid OKX-style
+  okxStatsContainer: {
+    backgroundColor: "#1a1f2e",
+    borderRadius: 16,
+    padding: 24,
+    marginVertical: 16,
     marginHorizontal: 16,
-    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#2a2f3e",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   sectionTitle: {
     fontSize: 20,
@@ -310,12 +354,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   statCard: {
-    backgroundColor: "#1a1f2e",
+    backgroundColor: "#23263a",
     borderRadius: 12,
     padding: 16,
     alignItems: "center",
     justifyContent: "center",
-    minWidth: (width - 56) / 3,
+    minWidth: (width - 80) / 3,
     flex: 1,
     borderWidth: 1,
     borderColor: "#2a2f3e",
@@ -324,21 +368,22 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    marginBottom: 8,
   },
   statValue: {
     fontSize: 24,
     fontWeight: "900",
     color: "#6366f1",
     marginBottom: 4,
+    textAlign: "center",
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 12,
     color: "#9ca3af",
     textAlign: "center",
     fontWeight: "600",
   },
-
-  // Players Section
+  // Players Section OKX-style
   playersContainer: {
     marginHorizontal: 16,
     marginBottom: 16,
@@ -369,18 +414,20 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   playerStatItem: {
-    backgroundColor: "#2a2f3e",
+    backgroundColor: "#23263a",
     borderRadius: 8,
     padding: 12,
     alignItems: "center",
-    minWidth: (width - 88) / 3,
+    minWidth: (width - 104) / 3,
     flex: 1,
+    marginBottom: 6,
   },
   playerStatValue: {
     fontSize: 16,
     fontWeight: "700",
     color: "#10b981",
     marginBottom: 4,
+    textAlign: "center",
   },
   playerStatLabel: {
     fontSize: 10,
