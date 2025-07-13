@@ -32,37 +32,40 @@ def fetch_team_statistics(competitor_id: str, season_id: str) -> dict:
         return {"error": str(e)}
 
 def fetch_team_id_by_name(team_name: str) -> str | None:
+    """
+    Recherche l'id d'une équipe à partir de son nom, short_name ou abbreviation via l'API interne.
+    Recherche robuste : stricte puis partielle, debug print noms trouvés.
+    """
     import urllib.parse
-    url = f"https://chillguys.vercel.app/competitors?name={urllib.parse.quote(team_name)}"
+    url = "https://chillguys.vercel.app/competitors"
     try:
         resp = requests.get(url, timeout=10)
-        if resp.status_code == 200:
-            data = resp.json()
-            competitors = data.get("data", [])
-            for c in competitors:
-                if c.get("name", "").lower() == team_name.lower():
-                    return str(c["id"])
-            url2 = f"https://chillguys.vercel.app/competitors?short_name={urllib.parse.quote(team_name)}"
-            resp2 = requests.get(url2, timeout=10)
-            if resp2.status_code == 200:
-                data2 = resp2.json()
-                competitors2 = data2.get("data", [])
-                for c in competitors2:
-                    if c.get("short_name", "").lower() == team_name.lower():
-                        return str(c["id"])
-            url3 = f"https://chillguys.vercel.app/competitors?abbreviation={urllib.parse.quote(team_name)}"
-            resp3 = requests.get(url3, timeout=10)
-            if resp3.status_code == 200:
-                data3 = resp3.json()
-                competitors3 = data3.get("data", [])
-                for c in competitors3:
-                    if c.get("abbreviation", "").lower() == team_name.lower():
-                        return str(c["id"])
-            for c in competitors:
-                if team_name.lower() in c.get("name", "").lower() or team_name.lower() in c.get("short_name", "").lower():
-                    return str(c["id"])
+        if resp.status_code != 200:
+            print(f"Erreur lors de la récupération des compétiteurs : {resp.status_code}")
+            return None
+        data = resp.json()
+        competitors = data.get("data", [])
+        # Debug print des noms trouvés
+        print("fetch_team_id_by_name: Noms disponibles :")
+        for c in competitors:
+            print(f" - name='{c.get('name')}', short_name='{c.get('short_name')}', abbreviation='{c.get('abbreviation')}'")
+        # Recherche stricte sur name, short_name, abbreviation (insensible à la casse)
+        for c in competitors:
+            if c.get("name", "").lower() == team_name.lower():
+                return str(c["id"])
+        for c in competitors:
+            if c.get("short_name", "").lower() == team_name.lower():
+                return str(c["id"])
+        for c in competitors:
+            if c.get("abbreviation", "").lower() == team_name.lower():
+                return str(c["id"])
+        # Recherche partielle : team_name inclus dans name ou short_name
+        for c in competitors:
+            if team_name.lower() in c.get("name", "").lower() or team_name.lower() in c.get("short_name", "").lower():
+                return str(c["id"])
         return None
-    except Exception:
+    except Exception as e:
+        print(f"Erreur fetch_team_id_by_name: {e}")
         return None
 
 def fetch_upcoming_matches(season_id: str) -> dict:
@@ -353,7 +356,7 @@ def generate_direct_response(text: str) -> str:
                 {"role": "system", "content": "You are a helpful assistant specialized in crypto and finance. You can also answer about football teams, their statistics and upcoming matches if the user asks."},
                 {"role": "user", "content": text}
             ],
-            max_tokens=256,
+            max_tokens=1000,
             temperature=0.7,
         )
         return response.choices[0].message.content.strip()
@@ -582,6 +585,11 @@ def fetch_season_id_by_team_id(team_id: str) -> str | None:
         return None
 
 def generate_direct_response(text: str) -> str:
+    """
+    Génère une réponse directe, en priorisant les requêtes football (stats, prochain match) puis fallback GPT.
+    """
+    import re
+    lower = text.lower()
     # Stats récentes/actuelles d'une équipe (ex: 'stats les plus récentes du PSG', 'stats actuelles OM')
     m_recent = re.search(r"stat[s]? (?:les plus récentes|actuelle[s]?|du moment|derni[eè]re[s]?) (?:du|de|d'|de l'|de la|des)?\s*([\w\d\s'-]+)", lower)
     if m_recent:
@@ -592,7 +600,7 @@ def generate_direct_response(text: str) -> str:
             competitor_id = fetch_team_id_by_name(team_part)
             if not competitor_id:
                 return f"Impossible de trouver l'équipe '{team_part}'. Vérifie le nom."
-        # Cherche la saison la plus récente pour cette équipe
+        # On essaie de récupérer la saison la plus récente via /competitors?id=...&include_season=true
         url = f"https://chillguys.vercel.app/competitors?id={competitor_id}&include_season=true"
         try:
             resp = requests.get(url, timeout=10)
@@ -614,13 +622,33 @@ def generate_direct_response(text: str) -> str:
                         lines.append(f"- {stat.get('type', 'Type inconnu')}: {stat.get('value', 'N/A')}")
                     return "\n".join(lines)
         except Exception:
-            return f"Impossible de récupérer la saison la plus récente pour l'équipe '{team_part}'."
-        return f"Impossible de trouver la saison la plus récente pour l'équipe '{team_part}'."
-    """Génère une réponse via ChatGPT, ou appelle l'API si la question concerne les stats ou les matchs."""
-    import re
-    lower = text.lower()
-    # Recherche stats équipe ou stats du PSG saison 3, etc.
-    # Accepte : "stat(s) du|de|d'| | équipe|  PSG saison 3", "stat psg saison 3", "stats marseille saison 2", etc.
+            pass
+        # Fallback: essayer de récupérer la saison la plus récente via /seasons?include_competitors=true
+        try:
+            seasons_resp = requests.get("https://chillguys.vercel.app/seasons?include_competitors=true", timeout=10)
+            if seasons_resp.status_code == 200:
+                seasons = seasons_resp.json().get("data", [])
+                # Trie par année décroissante si possible
+                seasons = sorted(seasons, key=lambda s: s.get("year", 0), reverse=True)
+                for season in seasons:
+                    for comp in season.get("competitors", []):
+                        if str(comp.get("id")) == str(competitor_id):
+                            season_id = str(season["special_id"])
+                            year = season.get("year")
+                            data_stats = fetch_team_statistics(competitor_id, season_id)
+                            if "error" in data_stats:
+                                return f"Erreur lors de la récupération des stats: {data_stats['error']}"
+                            stats = data_stats.get("competitor", {}).get("statistics", [])
+                            if not stats:
+                                continue
+                            lines = [f"Statistiques les plus récentes pour l'équipe {team_part} (saison {year}):"]
+                            for stat in stats:
+                                lines.append(f"- {stat.get('type', 'Type inconnu')}: {stat.get('value', 'N/A')}")
+                            return "\n".join(lines)
+        except Exception as e:
+            pass
+        return f"Aucune statistique trouvée pour l'équipe '{team_part}'."
+
     # Stats équipe + saison (ex: 'stats du PSG saison 3')
     m = re.search(r"stat[s]?\s*(?:du|de|d'|de l'|de la|de les|des)?\s*([\w\d\s'-]+?)\s*(?:équipe)?\s*saison\s*(\d+)", lower)
     if m:
@@ -637,11 +665,12 @@ def generate_direct_response(text: str) -> str:
             return f"Erreur lors de la récupération des stats: {data['error']}"
         stats = data.get("competitor", {}).get("statistics", [])
         if not stats:
-            return "Aucune statistique trouvée pour cette équipe/saison."
+            return f"Aucune statistique trouvée pour {team_part} (saison {season_id})."
         lines = [f"Statistiques principales pour l'équipe {team_part} (saison {season_id}):"]
         for stat in stats:
             lines.append(f"- {stat.get('type', 'Type inconnu')}: {stat.get('value', 'N/A')}")
         return "\n".join(lines)
+
     # Stats équipe + année (ex: 'stats du PSG en 2025')
     m_year = re.search(r"stat[s]?\s*(?:du|de|d'|de l'|de la|de les|des)?\s*([\w\d\s'-]+?)\s*(?:équipe)?\s*(?:en|pour|année|an)\s*(\d{4})", lower)
     if m_year:
@@ -655,6 +684,22 @@ def generate_direct_response(text: str) -> str:
                 return f"Impossible de trouver l'équipe '{team_part}'. Vérifie le nom."
         season_id = fetch_season_id_by_team_and_year(competitor_id, year)
         if not season_id:
+            # Fallback: chercher la saison via /seasons?year=...&include_competitors=true
+            try:
+                url = f"https://chillguys.vercel.app/seasons?year={year}&include_competitors=true"
+                resp = requests.get(url, timeout=10)
+                if resp.status_code == 200:
+                    seasons = resp.json().get("data", [])
+                    for season in seasons:
+                        for comp in season.get("competitors", []):
+                            if str(comp.get("id")) == str(competitor_id):
+                                season_id = str(season["special_id"])
+                                break
+                        if season_id:
+                            break
+            except Exception:
+                pass
+        if not season_id:
             return f"Impossible de trouver la saison {year} pour l'équipe '{team_part}'."
         data = fetch_team_statistics(competitor_id, season_id)
         if "error" in data:
@@ -666,6 +711,7 @@ def generate_direct_response(text: str) -> str:
         for stat in stats:
             lines.append(f"- {stat.get('type', 'Type inconnu')}: {stat.get('value', 'N/A')}")
         return "\n".join(lines)
+
     # Ancienne syntaxe : "stats équipe PSG saison 3"
     m2 = re.search(r"équipe\s*([\w\d\s]+).*saison\s*(\d+)", lower)
     if m2:
@@ -681,29 +727,47 @@ def generate_direct_response(text: str) -> str:
             return f"Erreur lors de la récupération des stats: {data['error']}"
         stats = data.get("competitor", {}).get("statistics", [])
         if not stats:
-            return "Aucune statistique trouvée pour cette équipe/saison."
+            return f"Aucune statistique trouvée pour {team_part} (saison {season_id})."
         lines = [f"Statistiques principales pour l'équipe {team_part} (saison {season_id}):"]
         for stat in stats:
             lines.append(f"- {stat.get('type', 'Type inconnu')}: {stat.get('value', 'N/A')}")
         return "\n".join(lines)
-    # Prochain match d'une équipe (ex: "prochain match du PSG", "prochain match marseille", etc.)
+
+    # Prochain match d'une équipe ("prochain match du PSG", etc.)
     m3 = re.search(r"prochain match (?:du|de|d'|de l'|de la|des)?\s*([\w\d\s'-]+)", lower)
     if m3:
         team_part = m3.group(1).strip(" -'")
         competitor_id = fetch_team_id_by_name(team_part)
         if not competitor_id:
             return f"Impossible de trouver l'équipe '{team_part}'. Vérifie le nom."
+        # On tente d'abord de trouver la saison via /competitors?id=...&include_season=true
         season_id = fetch_season_id_by_team_id(competitor_id)
+        # Fallback: chercher la saison la plus récente via /seasons
+        if not season_id:
+            try:
+                seasons_resp = requests.get("https://chillguys.vercel.app/seasons", timeout=10)
+                if seasons_resp.status_code == 200:
+                    seasons = seasons_resp.json().get("data", [])
+                    # Trie par année décroissante
+                    seasons = sorted(seasons, key=lambda s: s.get("year", 0), reverse=True)
+                    for season in seasons:
+                        for comp in season.get("competitors", []):
+                            if str(comp.get("id")) == str(competitor_id):
+                                season_id = str(season["special_id"])
+                                break
+                        if season_id:
+                            break
+            except Exception:
+                pass
         if not season_id:
             return f"Impossible de trouver la saison pour l'équipe '{team_part}'."
+        # Récupère les prochains matchs de la saison la plus récente
         data = fetch_upcoming_matches(season_id)
         if "error" in data:
             return f"Erreur lors de la récupération des matchs: {data['error']}"
         matches = data.get("upcomingMatches", [])
         # Recherche le vrai nom de l'équipe (pour l'affichage)
         team_name_official = None
-        # On va chercher dans la liste des équipes de la saison si possible
-        # (sinon on garde le nom fourni)
         try:
             url = f"https://chillguys.vercel.app/competitors?id={competitor_id}"
             resp = requests.get(url, timeout=10)
@@ -716,19 +780,22 @@ def generate_direct_response(text: str) -> str:
             pass
         if not team_name_official:
             team_name_official = team_part
-        # Filtrer les matchs où l'équipe est home ou away (par id, pas nom)
-        filtered = [m for m in matches if str(m.get('home_team')) == team_name_official or str(m.get('away_team')) == team_name_official]
-        # Si pas trouvé par nom officiel, tente par id dans les objets home_competitor/away_competitor si dispo
-        if not filtered:
-            for m in matches:
-                if (m.get('home_competitor', {}).get('id') == int(competitor_id)) or (m.get('away_competitor', {}).get('id') == int(competitor_id)):
-                    filtered.append(m)
+        # Filtrer les matchs où l'équipe est home ou away (par id ou nom)
+        filtered = []
+        for m in matches:
+            # Par nom officiel
+            if str(m.get('home_team')) == team_name_official or str(m.get('away_team')) == team_name_official:
+                filtered.append(m)
+            # Par id dans home_competitor/away_competitor
+            elif (m.get('home_competitor', {}).get('id') == int(competitor_id)) or (m.get('away_competitor', {}).get('id') == int(competitor_id)):
+                filtered.append(m)
         if not filtered:
             return f"Aucun match à venir trouvé pour {team_name_official}."
         match = filtered[0]
-        return f"Prochain match de {team_name_official}: {match['home_team']} vs {match['away_team']} le {match['start_time']}"
+        return f"Prochain match de {team_name_official}: {match.get('home_team','?')} vs {match.get('away_team','?')} le {match.get('start_time','?')}"
+
     # Ancienne syntaxe : prochains matchs saison X
-    elif ("prochain" in lower or "à venir" in lower or "upcoming" in lower) and "match" in lower and "saison" in lower:
+    if ("prochain" in lower or "à venir" in lower or "upcoming" in lower) and "match" in lower and "saison" in lower:
         m = re.search(r"saison\s*(\d+)", lower)
         if m:
             season_id = m.group(1)
@@ -740,10 +807,11 @@ def generate_direct_response(text: str) -> str:
                 return "Aucun match à venir trouvé pour cette saison."
             lines = [f"Matchs à venir pour la saison {season_id}:"]
             for match in matches[:5]:
-                lines.append(f"- {match['home_team']} vs {match['away_team']} le {match['start_time']}")
+                lines.append(f"- {match.get('home_team','?')} vs {match.get('away_team','?')} le {match.get('start_time','?')}")
             return "\n".join(lines)
         else:
             return "Merci de préciser la saison (ex: 'prochains matchs saison 5')."
+
     # Sinon, fallback sur ChatGPT
     try:
         response = client.chat.completions.create(
