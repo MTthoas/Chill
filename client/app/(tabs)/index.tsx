@@ -152,8 +152,10 @@ export default function HomeScreen() {
                   Next-Gen Fan Token Platform
                 </Text>
                 <Text style={styles.tagline}>
-                  Discover the universe of Fan Tokens and maximize your earnings
-                  with our premium trading platform
+                  Takumi helps you buy and sell fan tokens like a data-driven
+                  analyst — not a random gambler. AI-powered insights from past
+                  matches, upcoming fixtures, and league stats, right in your
+                  pocket.
                 </Text>
                 <TouchableOpacity style={styles.connectButton}>
                   <AppKitButton label="Connect your wallet" />

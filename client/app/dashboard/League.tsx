@@ -313,24 +313,22 @@ export default function League() {
                   <TouchableOpacity
                     style={[styles.actionButton, styles.stakeButton]}
                     onPress={async () => {
+                      console.log("Staking amount:", stakeAmount);
                       if (!stakeAmount || parseFloat(stakeAmount) <= 0) {
-                        Alert.alert(
-                          "Erreur",
-                          "Veuillez entrer un montant valide"
-                        );
                         return;
                       }
 
-                      const success = await stake(stakeAmount);
-                      if (success) {
-                        setStakeAmount("");
-                        Alert.alert("Succès", "Tokens stakés avec succès !");
-                      } else {
-                        Alert.alert(
-                          "Erreur",
-                          stakingError || "Échec du staking"
-                        );
-                      }
+                      await stake(stakeAmount);
+
+                      //   if (success) {
+                      //     setStakeAmount("");
+                      //     Alert.alert("Succès", "Tokens stakés avec succès !");
+                      //   } else {
+                      //     Alert.alert(
+                      //       "Erreur",
+                      //       stakingError || "Échec du staking"
+                      //     );
+                      //   }
                     }}
                     disabled={stakingLoading}
                   >
@@ -392,11 +390,6 @@ export default function League() {
             )}
 
             {/* Erreur de staking */}
-            {stakingError && (
-              <View style={styles.errorContainer}>
-                <Text style={styles.errorText}>{stakingError}</Text>
-              </View>
-            )}
           </View>
         )}
 
