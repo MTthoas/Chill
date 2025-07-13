@@ -12,6 +12,7 @@ import { useAccount } from "wagmi";
 import { useChilizTrading } from "../../hooks/useChilizTrading";
 import { useFanTokenBalances } from "../../hooks/useFanTokenBalance";
 import { useTokenPrices } from "../../hooks/useTokenPrices";
+import { router } from "expo-router";
 
 // Helper pour formater les gros nombres
 function formatLargeNumber(num: number): string {
@@ -30,7 +31,7 @@ export default function Trading() {
 
   // Récupérer les prix des tokens
   const allSymbols = ["CHZ", ...fanTokenBalances.map((t) => t.symbol)];
-  const prices = useTokenPrices(allSymbols);
+  const prices: any = useTokenPrices(allSymbols);
 
   // Calcul du volume total et des stats réelles
   const totalVolume = fanTokenBalances.reduce(
@@ -127,7 +128,15 @@ export default function Trading() {
         </View>
 
         {/* AI Trading Section - Violet highlight */}
-        <View style={styles.aiSection}>
+        <TouchableOpacity
+          style={styles.aiSection}
+          activeOpacity={0.85}
+          onPress={() => {
+            router.push({
+              pathname: "/Dashboard",
+            });
+          }}
+        >
           <View style={styles.aiHeader}>
             <Text style={styles.aiTitle}>🤖 AI Trading Assistant</Text>
             <View style={styles.aiBadge}>
@@ -137,7 +146,7 @@ export default function Trading() {
           <Text style={styles.aiDescription}>
             Analyses intelligentes du marché en temps réel
           </Text>
-        </View>
+        </TouchableOpacity>
 
         {/* Trading Interface */}
         <View style={styles.tradingSection}>

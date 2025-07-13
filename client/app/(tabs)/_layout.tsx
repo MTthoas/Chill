@@ -70,15 +70,6 @@ export default function TabLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="fan_tokens"
-        options={{
-          title: "Fan Tokens",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={28} name="trophy.fill" color={color} />
-          ),
-        }}
-      />
       {/* Onglet League et Team supprimés définitivement du TabBar */}
     </Tabs>
   );

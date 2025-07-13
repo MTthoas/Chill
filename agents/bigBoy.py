@@ -381,7 +381,7 @@ pending_chats = {}
 chat_agent = Agent(
     name="intellect_chat",
     port=8010,
-    seed="bigboy-chat-agent-gay-phrase",
+    seed="bigboy-chat-agent-matth-phrase",
     mailbox=True,
 )
 

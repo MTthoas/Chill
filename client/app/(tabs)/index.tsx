@@ -43,7 +43,7 @@ const getChainName = (chainId: number): string => {
 };
 
 export default function HomeScreen() {
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
   const chainId = useChainId();
 
   // Use on-chain token balances instead of backend API
@@ -68,11 +68,17 @@ export default function HomeScreen() {
     () => ["CHZ", ...fanTokens.map((t) => t.symbol)],
     [fanTokens, refreshing]
   );
-  const prices = useTokenPrices(allSymbols, refreshing);
+  const {
+    prices,
+    loading: pricesLoading,
+    error: pricesError,
+  } = useTokenPrices(allSymbols, refreshing);
 
   // Calcul dynamique de la valeur totale du portfolio en $
   const totalValue =
-    (chzBalance ? Number(chzBalance.formatted) * (prices["CHZ"] || 0) : 0) +
+    (chzBalance
+      ? (Number(chzBalance.value) / 1e18) * (prices["CHZ"] || 0)
+      : 0) +
     fanTokens.reduce(
       (total, token) =>
         total + Number(token.readableBalance) * (prices[token.symbol] || 0),
@@ -86,7 +92,7 @@ export default function HomeScreen() {
     await refetch();
     await refetchChz();
     setRefreshing(false);
-  }, []); // Correction : tableau vide pour éviter le hot reload infini
+  }, [refetch, refetchChz]);
 
   // Quick stats dynamiques depuis l'API
   const [quickStats, setQuickStats] = useState({
@@ -109,7 +115,7 @@ export default function HomeScreen() {
           ...prev,
           topClubs: clubs && typeof clubs.count === "number" ? clubs.count : 0,
         }));
-      } catch (e) {
+      } catch {
         setQuickStats((prev) => ({ ...prev, topClubs: 0 }));
       } finally {
         setQuickStatsLoading(false);
@@ -119,9 +125,169 @@ export default function HomeScreen() {
   }, []);
 
   // Calcul dynamique du nombre de tokens (fan tokens + CHZ natif)
-  const nbTokens = fanTokens.length + (chzBalance ? 1 : 0);
+  const nbTokens = fanTokens.filter((token) => {
+    const tokenValue =
+      Number(token.readableBalance) * (prices[token.symbol] || 0);
+    return tokenValue >= 0.01;
+  }).length;
 
-  // Dashboard OKX-style betclicable
+  // Si l'utilisateur n'est pas connecté, afficher la landing page
+  if (!isConnected) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <ScrollView style={styles.scrollContainer}>
+          {/* Hero Section avec image de fond */}
+          <View style={styles.heroSection}>
+            <Image
+              source={{
+                uri: "https://www.shutterstock.com/shutterstock/videos/1030617476/thumb/1.jpg?ip=x480",
+              }}
+              style={styles.heroImage}
+              resizeMode="cover"
+            />
+            <View style={styles.heroGradient}>
+              <View style={styles.heroContent}>
+                <Text style={styles.heroTitle}>TAKUMI PRO</Text>
+                <Text style={styles.heroSubtitle}>
+                  Next-Gen Fan Token Platform
+                </Text>
+                <Text style={styles.tagline}>
+                  Discover the universe of Fan Tokens and maximize your earnings
+                  with our premium trading platform
+                </Text>
+                <TouchableOpacity style={styles.connectButton}>
+                  <AppKitButton label="Connect your wallet" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+
+          {/* Features Section */}
+          <View style={styles.featuresSection}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Premium Features</Text>
+              <View style={styles.sectionBadge}>
+                <Text style={styles.sectionBadgeText}>✨ PRO</Text>
+              </View>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.featuresScroll}
+            >
+              {[
+                {
+                  icon: "💰",
+                  title: "Portfolio Tracking",
+                  desc: "Real-time portfolio analytics & insights",
+                  gradient: ["#10b981", "#22c55e"],
+                },
+                {
+                  icon: "⚽",
+                  title: "Fan Tokens",
+                  desc: "Trade your favorite team tokens",
+                  gradient: ["#6366f1", "#8b5cf6"],
+                },
+                {
+                  icon: "📊",
+                  title: "Advanced Analytics",
+                  desc: "Professional market analysis tools",
+                  gradient: ["#f59e0b", "#f97316"],
+                },
+                {
+                  icon: "🎯",
+                  title: "Yield Farming",
+                  desc: "Earn rewards through staking pools",
+                  gradient: ["#ef4444", "#f97316"],
+                },
+                {
+                  icon: "🚀",
+                  title: "Early Access",
+                  desc: "Get first access to new tokens",
+                  gradient: ["#06b6d4", "#0891b2"],
+                },
+              ].map((feature, index) => (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.featureCardPremium,
+                    {
+                      borderColor: feature.gradient[0],
+                      shadowColor: feature.gradient[0],
+                    },
+                  ]}
+                  activeOpacity={0.8}
+                >
+                  <View
+                    style={[
+                      styles.featureIconContainer,
+                      { backgroundColor: feature.gradient[0] },
+                    ]}
+                  >
+                    <Text style={styles.featureIconPremium}>
+                      {feature.icon}
+                    </Text>
+                  </View>
+                  <Text style={styles.featureTitlePremium}>
+                    {feature.title}
+                  </Text>
+                  <Text style={styles.featureDescPremium}>{feature.desc}</Text>
+                  <View
+                    style={[
+                      styles.featureGlow,
+                      { backgroundColor: feature.gradient[0] },
+                    ]}
+                  />
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+
+          {/* Stats Section */}
+          <View style={styles.statsSection}>
+            <Text style={styles.sectionTitle}>Trusted by Athletes & Fans</Text>
+            <View style={styles.statsGrid}>
+              <View style={styles.statCard}>
+                <Text style={styles.statNumber}>50M+</Text>
+                <Text style={styles.statLabel}>Active Users</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statNumber}>$2.5B</Text>
+                <Text style={styles.statLabel}>Volume Traded</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statNumber}>150+</Text>
+                <Text style={styles.statLabel}>Sports Teams</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statNumber}>99.9%</Text>
+                <Text style={styles.statLabel}>Uptime</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* CTA Section */}
+          <View style={styles.ctaSection}>
+            <View style={styles.ctaCard}>
+              <Text style={styles.ctaIcon}>🚀</Text>
+              <Text style={styles.ctaTitle}>Ready to Start Trading?</Text>
+              <Text style={styles.ctaDescription}>
+                Connect your wallet and explore the Chiliz ecosystem with
+                professional-grade tools
+              </Text>
+              <View style={styles.ctaButtons}>
+                <TouchableOpacity style={styles.primaryButton}>
+                  <AppKitButton />
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // Dashboard OKX-style pour utilisateurs connectés
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.dashboardContainer}>
@@ -164,9 +330,10 @@ export default function HomeScreen() {
               ${formatLargeNumber(Number(totalValue.toFixed(2)))}
             </Text>
             <Text style={styles.okxBalanceSubtext}>
-              {fanTokens.length + (chzBalance ? 1 : 0)} Token
-              {fanTokens.length + (chzBalance ? 1 : 0) !== 1 ? "s" : ""} • Live
-              Market
+              {nbTokens + (chzBalance ? 1 : 0)} Token
+              {nbTokens + (chzBalance ? 1 : 0) !== 1 ? "s" : ""} •
+              {pricesError ? " Estimated Prices" : " Live Market"}
+              {pricesLoading && " 🔄"}
             </Text>
           </View>
 
@@ -187,9 +354,9 @@ export default function HomeScreen() {
                 <ThemedText style={styles.chatAgentTitle}>
                   💬 Chat Agent
                 </ThemedText>
-                <ThemedView
+                <View
                   style={[
-                    styles.chatAgentStatus,
+                    styles.statusIndicator,
                     { backgroundColor: "#4ade80" },
                   ]}
                 />
@@ -197,9 +364,17 @@ export default function HomeScreen() {
               <ThemedText style={styles.chatAgentDescription}>
                 Chat with our intelligent IntentFi Agent
               </ThemedText>
-              <ThemedText style={styles.chatAgentLink}>
-                🔗 Open a chat →
-              </ThemedText>
+              <TouchableOpacity
+                onPress={() =>
+                  Linking.openURL(
+                    "https://chat.agentverse.ai/sessions/e2f15a05-7122-4d00-b476-0c4531b9f790"
+                  )
+                }
+              >
+                <ThemedText style={styles.chatAgentLink}>
+                  🔗 Open a chat →
+                </ThemedText>
+              </TouchableOpacity>
             </TouchableOpacity>
           </ThemedView>
 
@@ -293,12 +468,13 @@ export default function HomeScreen() {
                     </View>
                     <View style={styles.okxTokenRight}>
                       <Text style={styles.okxTokenBalance}>
-                        {Number(chzBalance.formatted).toFixed(4)}
+                        {(Number(chzBalance.value) / 1e18).toFixed(4)}
                       </Text>
                       <Text style={styles.okxTokenValue}>
                         $
                         {(
-                          Number(chzBalance.formatted) * (prices["CHZ"] || 0)
+                          (Number(chzBalance.value) / 1e18) *
+                          (prices["CHZ"] || 0)
                         ).toFixed(2)}
                       </Text>
                     </View>
@@ -309,9 +485,12 @@ export default function HomeScreen() {
                 )}
                 {/* Fan tokens dynamiques */}
                 {fanTokens
-                  .filter(
-                    (token) => !hideSmallBalances || token.readableBalance > 0
-                  )
+                  .filter((token) => {
+                    const tokenValue =
+                      Number(token.readableBalance) *
+                      (prices[token.symbol] || 0);
+                    return tokenValue >= 0.01;
+                  })
                   .map((token, index) => (
                     <TouchableOpacity
                       key={`${token.contractAddress}-${index}`}
@@ -344,7 +523,8 @@ export default function HomeScreen() {
                         <Text style={styles.okxTokenValue}>
                           $
                           {(
-                            Number(token.readableBalance)
+                            Number(token.readableBalance) *
+                            (prices[token.symbol] || 0)
                           ).toFixed(2)}
                         </Text>
                       </View>
@@ -390,7 +570,7 @@ function getFanTokenLogo(symbol: string) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "transparent",
+    backgroundColor: "#000000",
   },
 
   // Hero Section
@@ -407,6 +587,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     width: "100%",
     height: "100%",
+    backgroundColor: "rgba(0,0,0,0.7)",
   },
   heroContent: {
     flex: 1,
@@ -420,18 +601,22 @@ const styles = StyleSheet.create({
   // Landing Page Styles
   scrollContainer: {
     flexGrow: 1,
-    backgroundColor: "transparent",
+    backgroundColor: "#000000",
   },
   logoContainer: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
     backgroundColor: "rgba(139, 92, 246, 0.2)",
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 24,
-    borderWidth: 2,
-    borderColor: "rgba(139, 92, 246, 0.3)",
+    marginBottom: 32,
+    borderWidth: 3,
+    borderColor: "rgba(139, 92, 246, 0.5)",
+    shadowColor: "#8b5cf6",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
   },
   logoText: {
     fontSize: 40,
@@ -449,11 +634,12 @@ const styles = StyleSheet.create({
 
   // Connect Button
   connectButton: {
-    borderRadius: 30,
+    borderRadius: 20,
     overflow: "hidden",
+    width: "70%",
     elevation: 10,
-    shadowColor: "#8b5cf6",
-    shadowOffset: { width: 0, height: 5 },
+    shadowColor: "#F7931A",
+    shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.4,
     shadowRadius: 10,
   },
@@ -470,52 +656,56 @@ const styles = StyleSheet.create({
   },
 
   featureCardPremium: {
-    width: 180,
-    height: 140,
+    width: 200,
+    height: 160,
     marginRight: 18,
     borderRadius: 24,
-    backgroundColor: "rgba(30,30,40,0.7)",
+    backgroundColor: "#1A1A1A",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
+    borderColor: "#333333",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    position: "relative",
+    overflow: "hidden",
   },
   featuresScroll: {
     paddingLeft: 20,
     paddingVertical: 8,
   },
   featureIconPremium: {
-    fontSize: 38,
-    marginBottom: 10,
+    fontSize: 24,
+    color: "#FFFFFF",
   },
   featureTitlePremium: {
-    fontSize: 18,
-    fontWeight: "bold",
+    fontSize: 16,
+    fontWeight: "700",
     color: "#fff",
-    marginBottom: 6,
+    marginBottom: 8,
     textAlign: "center",
   },
   featureDescPremium: {
-    fontSize: 13,
-    color: "rgba(255,255,255,0.8)",
+    fontSize: 12,
+    color: "rgba(255,255,255,0.7)",
     textAlign: "center",
-    lineHeight: 18,
+    lineHeight: 16,
+    paddingHorizontal: 8,
   },
   // Features Section
   featuresSection: {
     padding: 20,
-    backgroundColor: "transparent",
+    backgroundColor: "#000000",
   },
   sectionTitle: {
-    fontSize: 28,
+    fontSize: 22,
     paddingTop: 10,
     fontWeight: "bold",
     color: "#fff",
     marginBottom: 24,
-    textAlign: "center",
+    textAlign: "left",
   },
   featuresGrid: {
     flexDirection: "row",
@@ -622,7 +812,7 @@ const styles = StyleSheet.create({
   ctaSection: {
     padding: 20,
     paddingBottom: 40,
-    backgroundColor: "transparent",
+    backgroundColor: "#000000",
   },
   ctaCard: {
     padding: 30,
@@ -1062,5 +1252,134 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: "#888888",
     fontWeight: "300",
+  },
+
+  // Landing Page Premium Styles
+  heroTitle: {
+    fontSize: 42,
+    fontWeight: "900",
+    color: "#FFFFFF",
+    textAlign: "center",
+    marginBottom: 8,
+    letterSpacing: 2,
+    textShadowColor: "rgba(139, 92, 246, 0.5)",
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 10,
+  },
+  heroSubtitle: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#F7931A",
+    textAlign: "center",
+    marginBottom: 20,
+    letterSpacing: 1,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 24,
+  },
+  sectionBadge: {
+    backgroundColor: "rgba(139, 92, 246, 0.2)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(139, 92, 246, 0.5)",
+  },
+  sectionBadgeText: {
+    color: "#8b5cf6",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  featureIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  featureGlow: {
+    position: "absolute",
+    top: -2,
+    left: -2,
+    right: -2,
+    bottom: -2,
+    borderRadius: 26,
+    opacity: 0.1,
+    zIndex: -1,
+  },
+  statsSection: {
+    padding: 20,
+    backgroundColor: "#000000",
+  },
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    gap: 12,
+  },
+  statCard: {
+    width: (width - 52) / 2,
+    backgroundColor: "#1A1A1A",
+    borderRadius: 16,
+    padding: 20,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#333333",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  statNumber: {
+    fontSize: 28,
+    fontWeight: "900",
+    color: "#FFFFFF",
+    marginBottom: 8,
+    textShadowColor: "rgba(139, 92, 246, 0.3)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  statLabel: {
+    fontSize: 14,
+    color: "#888888",
+    textAlign: "center",
+    fontWeight: "500",
+  },
+  ctaIcon: {
+    fontSize: 48,
+    textAlign: "center",
+    marginBottom: 16,
+  },
+  ctaButtons: {
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  primaryButton: {
+    borderRadius: 30,
+    overflow: "hidden",
+    elevation: 10,
+    shadowColor: "#8b5cf6",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 15,
+  },
+  ctaFooter: {
+    fontSize: 14,
+    color: "#888888",
+    textAlign: "center",
+    fontWeight: "500",
+  },
+  statusIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
 });

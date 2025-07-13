@@ -58,7 +58,7 @@ export default function Team() {
             Object.entries(stats.statistics).map(([type, value]) => (
               <View key={type} style={styles.statRow}>
                 <Text style={styles.statType}>{type}</Text>
-                <Text style={styles.statValue}>{value}</Text>
+                <Text style={styles.statValue}>{value as any}</Text>
               </View>
             ))}
         </View>

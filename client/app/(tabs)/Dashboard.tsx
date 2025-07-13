@@ -90,6 +90,12 @@ export default function Dashboard() {
         <View style={styles.okxHeader}>
           <Text style={styles.okxTitle}>⚽ Leagues</Text>
           <Text style={styles.okxSubtitle}>Select a league to explore</Text>
+          
+          <View style={styles.poweredByContainer}>
+            <Text style={styles.poweredByText}>
+              🤖 Powered by our AI agents & Sports data
+            </Text>
+          </View>
         </View>
 
         {/* Leagues List */}
@@ -341,6 +347,24 @@ const styles = StyleSheet.create({
   okxEmptyText: {
     fontSize: 14,
     color: "#888888",
+    textAlign: "center",
+  },
+
+  // Powered By Label
+  poweredByContainer: {
+    backgroundColor: "rgba(139, 92, 246, 0.1)",
+    borderRadius: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: "rgba(139, 92, 246, 0.2)",
+    alignItems: "center",
+  },
+  poweredByText: {
+    fontSize: 12,
+    color: "#8b5cf6",
+    fontWeight: "500",
     textAlign: "center",
   },
 });
