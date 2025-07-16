@@ -73,7 +73,7 @@ Le script `DeployFanTokens.s.sol` déploie automatiquement :
 anvil --port 8545
 
 # Dans un autre terminal
-PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+PRIVATE_KEY=Ox.. \
 forge script script/DeployFanTokens.s.sol \
 --rpc-url http://localhost:8545 \
 --broadcast
